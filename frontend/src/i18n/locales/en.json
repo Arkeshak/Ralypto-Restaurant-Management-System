@@ -85,6 +85,48 @@
     "basic": "Basic Plan",
     "standard": "Standard Plan",
     "premium": "Premium Plan",
-    "switcherTitle": "Switch Mock Plan (Dev Mode)"
+    "switcherTitle": "Subscription Tiers"
+  },
+  "receipt": {
+    "billNo": "Bill #{{number}}",
+    "thankYou": "Thank you for dining with us!",
+    "printBill": "Print 80mm Bill",
+    "whatsappBill": "WhatsApp Bill",
+    "smsBill": "SMS Bill",
+    "done": "Done"
+  },
+  "tables": {
+    "moveTitle": "Move Table T{{number}}",
+    "moveDesc": "Select an unoccupied table to move this order to.",
+    "mergeTitle": "Merge Table T{{number}}",
+    "mergeDesc": "Combine with another active busy table.",
+    "selectFree": "Select a free table...",
+    "selectBusy": "Select an active table...",
+    "combinedPreview": "Combined Order Preview",
+    "newTotal": "New Combined Total",
+    "managerPin": "Manager PIN (if required)"
+  },
+  "kitchen": {
+    "kdsTitle": "Kitchen Display System",
+    "newTickets": "New Tickets",
+    "preparing": "Preparing",
+    "ready": "Ready to Serve",
+    "advance": "Advance",
+    "stationAll": "All Stations",
+    "stationKitchen": "Kitchen Only",
+    "stationBar": "Bar Only",
+    "muteSound": "Mute Sound"
+  },
+  "reports": {
+    "reportsTitle": "Reports & Analytics",
+    "todaySales": "Today's Sales",
+    "ordersCount": "Total Orders",
+    "activeTables": "Active Tables",
+    "averageTicket": "Average Ticket",
+    "salesByHour": "Sales by Hour",
+    "topDishes": "Top 5 Dishes",
+    "exportCsv": "Export CSV",
+    "printReport": "Print Report",
+    "aiAdvisorTitle": "AI Hospitality Advisor"
   }
 }

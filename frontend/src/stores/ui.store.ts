@@ -1,6 +1,41 @@
 import { create } from 'zustand';
 
+export type ThemeMode = 'light' | 'dark' | 'auto';
+
+function applyTheme(mode: ThemeMode) {
+  let isDark = mode === 'dark';
+  if (mode === 'auto') {
+    isDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  if (typeof document !== 'undefined') {
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.documentElement.classList.remove('light');
+    } else {
+      document.documentElement.classList.add('light');
+      document.documentElement.setAttribute('data-theme', 'light');
+      document.documentElement.classList.remove('dark');
+    }
+  }
+}
+
+const initialMode: ThemeMode =
+  (typeof window !== 'undefined' && (localStorage.getItem('ralypto_theme_mode') as ThemeMode)) ||
+  'auto';
+
+if (typeof window !== 'undefined') {
+  applyTheme(initialMode);
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    const current = useUiStore.getState().themeMode;
+    if (current === 'auto') {
+      applyTheme('auto');
+    }
+  });
+}
+
 interface UiState {
+  themeMode: ThemeMode;
   theme: 'dark' | 'light';
   isSidebarOpen: boolean;
   activeManagerPinModal: {
@@ -9,6 +44,7 @@ interface UiState {
     description: string;
     onSuccess?: (pin: string) => void;
   };
+  setThemeMode: (mode: ThemeMode) => void;
   toggleTheme: () => void;
   setSidebarOpen: (open: boolean) => void;
   openManagerPinModal: (
@@ -20,7 +56,8 @@ interface UiState {
 }
 
 export const useUiStore = create<UiState>((set) => ({
-  theme: 'dark',
+  themeMode: initialMode,
+  theme: initialMode === 'light' ? 'light' : 'dark',
   isSidebarOpen: true,
   activeManagerPinModal: {
     isOpen: false,
@@ -28,17 +65,28 @@ export const useUiStore = create<UiState>((set) => ({
     description: '',
   },
 
+  setThemeMode: (mode: ThemeMode) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ralypto_theme_mode', mode);
+    }
+    applyTheme(mode);
+    set({
+      themeMode: mode,
+      theme: mode === 'light' ? 'light' : 'dark',
+    });
+  },
+
   toggleTheme: () => {
     set((state) => {
-      const nextTheme = state.theme === 'dark' ? 'light' : 'dark';
-      if (nextTheme === 'dark') {
-        document.documentElement.classList.add('dark');
-        document.documentElement.classList.remove('light');
-      } else {
-        document.documentElement.classList.add('light');
-        document.documentElement.classList.remove('dark');
+      const nextMode: ThemeMode = state.themeMode === 'dark' ? 'light' : 'dark';
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('ralypto_theme_mode', nextMode);
       }
-      return { theme: nextTheme };
+      applyTheme(nextMode);
+      return {
+        themeMode: nextMode,
+        theme: nextMode === 'light' ? 'light' : 'dark',
+      };
     });
   },
 

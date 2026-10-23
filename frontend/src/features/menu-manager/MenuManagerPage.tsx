@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   UtensilsCrossed,
   Plus,
@@ -25,6 +26,7 @@ export function MenuManagerPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
   const [tempPrice, setTempPrice] = useState<string>("");
+  const parentRef = useRef<HTMLDivElement>(null);
 
   // Add Item Drawer state
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -57,6 +59,13 @@ export function MenuManagerPage() {
       return matchCat && matchSearch;
     });
   }, [items, selectedCat, searchQuery]);
+
+  const rowVirtualizer = useVirtualizer({
+    count: filteredItems.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 64,
+    overscan: 5,
+  });
 
   // Toggle availability in 1 tap
   const handleToggleAvailability = (item: MenuItem) => {
@@ -205,10 +214,10 @@ export function MenuManagerPage() {
         </div>
       ) : (
         <div className="mt-6 overflow-hidden rounded-card border border-border bg-surface shadow-card">
-          <div className="overflow-x-auto">
+          <div ref={parentRef} className="overflow-x-auto max-h-[700px] overflow-y-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-border bg-bg/50 text-xs font-semibold uppercase tracking-wider text-muted">
+                <tr className="border-b border-border bg-bg/50 text-xs font-semibold uppercase tracking-wider text-muted sticky top-0 z-10 backdrop-blur-md">
                   <th className="py-3.5 px-4">Item</th>
                   <th className="py-3.5 px-4">Category</th>
                   <th className="py-3.5 px-4">Price (LKR)</th>
@@ -217,8 +226,11 @@ export function MenuManagerPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60 text-sm">
-                {filteredItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-bg/40 transition-colors">
+                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const item = filteredItems[virtualRow.index];
+                  if (!item) return null;
+                  return (
+                    <tr key={item.id} className="hover:bg-bg/40 transition-colors">
                     {/* Item Name & Photo */}
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
@@ -308,8 +320,9 @@ export function MenuManagerPage() {
                       {item.modifiers ? `${item.modifiers.length} modifiers` : "None"}
                     </td>
                   </tr>
-                ))}
-              </tbody>
+                );
+              })}
+            </tbody>
             </table>
           </div>
         </div>

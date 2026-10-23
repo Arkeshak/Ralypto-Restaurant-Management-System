@@ -45,7 +45,7 @@ export default {
         card: 'var(--shadow-card)',
       },
       fontFamily: {
-        sans: ['Inter Variable', 'system-ui', 'sans-serif'],
+        sans: ['Inter Variable', 'Noto Sans Sinhala', 'Noto Sans Tamil', 'system-ui', 'sans-serif'],
       },
       minHeight: {
         12: '48px',

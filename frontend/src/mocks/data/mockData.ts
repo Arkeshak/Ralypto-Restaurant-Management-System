@@ -20,7 +20,7 @@ export const MOCK_RESTAURANT: Restaurant = {
 
 export const MOCK_USERS: Record<string, { user: User; pin: string; password: string }> = {
   owner: {
-    pin: '1234',
+    pin: '1111',
     password: 'pass123',
     user: {
       id: 'usr-owner-01',
@@ -31,8 +31,20 @@ export const MOCK_USERS: Record<string, { user: User; pin: string; password: str
       restaurantId: 'rest-cey-101',
     },
   },
-  cashier: {
+  manager: {
     pin: '2222',
+    password: 'pass123',
+    user: {
+      id: 'usr-mgr-01',
+      email: 'manager@ralypto.com',
+      firstName: 'Kamal',
+      lastName: 'Silva',
+      role: 'manager',
+      restaurantId: 'rest-cey-101',
+    },
+  },
+  cashier: {
+    pin: '3333',
     password: 'pass123',
     user: {
       id: 'usr-cashier-01',
@@ -44,7 +56,7 @@ export const MOCK_USERS: Record<string, { user: User; pin: string; password: str
     },
   },
   waiter: {
-    pin: '3333',
+    pin: '4444',
     password: 'pass123',
     user: {
       id: 'usr-waiter-01',
@@ -56,7 +68,7 @@ export const MOCK_USERS: Record<string, { user: User; pin: string; password: str
     },
   },
   kitchen: {
-    pin: '4444',
+    pin: '5555',
     password: 'pass123',
     user: {
       id: 'usr-kitchen-01',
@@ -67,31 +79,44 @@ export const MOCK_USERS: Record<string, { user: User; pin: string; password: str
       restaurantId: 'rest-cey-101',
     },
   },
-  accountant: {
-    pin: '5555',
-    password: 'pass123',
-    user: {
-      id: 'usr-accountant-01',
-      email: 'accountant@ralypto.com',
-      firstName: 'Nimali',
-      lastName: 'Jayasuriya',
-      role: 'accountant',
-      restaurantId: 'rest-cey-101',
-    },
+};
+
+export const MOCK_PLANS: Record<string, { id: string; code: 'basic' | 'standard' | 'premium'; name: string; monthlyPriceCents: number }> = {
+  basic: {
+    id: 'plan-basic',
+    code: 'basic',
+    name: 'Basic Plan',
+    monthlyPriceCents: 1250000,
   },
-  super_admin: {
-    pin: '9999',
-    password: 'pass123',
-    user: {
-      id: 'usr-admin-01',
-      email: 'admin@ralypto.com',
-      firstName: 'Platform',
-      lastName: 'Admin',
-      role: 'super_admin',
-      restaurantId: 'rest-cey-101',
-    },
+  standard: {
+    id: 'plan-standard',
+    code: 'standard',
+    name: 'Standard Plan',
+    monthlyPriceCents: 2450000,
+  },
+  premium: {
+    id: 'plan-premium',
+    code: 'premium',
+    name: 'Premium Plan',
+    monthlyPriceCents: 4950000,
   },
 };
+
+let currentMockPlanCode: 'basic' | 'standard' | 'premium' = 'standard';
+
+export function setMockRestaurantPlan(code: 'basic' | 'standard' | 'premium') {
+  if (MOCK_PLANS[code]) {
+    currentMockPlanCode = code;
+  }
+}
+
+export function getMockRestaurantPlan() {
+  return MOCK_PLANS[currentMockPlanCode] || MOCK_PLANS.standard;
+}
+
+export function getMockPlanCode(): 'basic' | 'standard' | 'premium' {
+  return currentMockPlanCode;
+}
 
 export const MOCK_CATEGORIES: Category[] = [
   {

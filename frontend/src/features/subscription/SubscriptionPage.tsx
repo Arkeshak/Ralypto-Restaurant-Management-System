@@ -169,11 +169,23 @@ export function SubscriptionPage() {
 
                 <div className="pt-4 border-t border-border/40">
                   <BigButton
-                    label={isCurrent ? "Current Plan" : `Switch to ${t.name}`}
+                    label={
+                      isCurrent
+                        ? "Current Plan"
+                        : (import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === "true")
+                          ? `Switch to ${t.name} (Dev Mode)`
+                          : `Upgrade to ${t.name}`
+                    }
                     variant={isCurrent ? "secondary" : "primary"}
                     full
                     disabled={isCurrent}
-                    onClick={() => handleSelectPlan(t.code)}
+                    onClick={() => {
+                      if (import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === "true") {
+                        handleSelectPlan(t.code);
+                      } else {
+                        handleWhatsApp();
+                      }
+                    }}
                   />
                 </div>
               </div>

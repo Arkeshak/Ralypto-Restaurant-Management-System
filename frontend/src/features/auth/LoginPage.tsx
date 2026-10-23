@@ -9,8 +9,8 @@ import { useTranslation } from "react-i18next";
 import { KeyRound, Lock, Mail, ArrowRight, Eye, EyeOff, Globe } from "lucide-react";
 
 export const LoginPage: React.FC = () => {
-  const [email, setEmail] = useState("owner@ralypto.com");
-  const [password, setPassword] = useState("pass123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -40,6 +40,9 @@ export const LoginPage: React.FC = () => {
         featureFlags: res.featureFlags,
       });
 
+      // Prefetch POS route after login
+      import("@/features/pos/PosPage").catch(() => {});
+
       const landingRoute = getRoleLandingRoute(res.user.role);
       navigate(landingRoute, { replace: true });
     } catch (err: any) {
@@ -49,13 +52,15 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const demoRoles = [
-    { label: "Owner / Manager", email: "owner@ralypto.com" },
-    { label: "Cashier (POS)", email: "cashier@ralypto.com" },
-    { label: "Floor Waiter", email: "waiter@ralypto.com" },
-    { label: "Kitchen Chef", email: "kitchen@ralypto.com" },
-    { label: "Accountant", email: "accountant@ralypto.com" },
-  ];
+  const demoRoles =
+    import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === "true"
+      ? [
+          { label: "Owner / Manager", email: "owner@ralypto.com" },
+          { label: "Cashier (POS)", email: "cashier@ralypto.com" },
+          { label: "Floor Waiter", email: "waiter@ralypto.com" },
+          { label: "Kitchen Chef", email: "kitchen@ralypto.com" },
+        ]
+      : [];
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-bg text-text selection:bg-brand selection:text-surface">
@@ -116,7 +121,7 @@ export const LoginPage: React.FC = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="owner@ralypto.com"
+                placeholder="name@restaurant.com"
                 className="w-full h-12 pl-11 pr-4 rounded-xl border border-border bg-bg text-text text-sm focus:outline-none focus:ring-2 focus:ring-info"
               />
             </div>
@@ -170,26 +175,28 @@ export const LoginPage: React.FC = () => {
           </Link>
         </div>
 
-        {/* Quick Demo Sign-ins */}
-        <div className="mt-6 pt-4 border-t border-border/40">
-          <p className="text-xs font-semibold text-muted mb-2">Quick Demo Sign In</p>
-          <div className="grid grid-cols-2 gap-2">
-            {demoRoles.map((demo) => (
-              <button
-                key={demo.email}
-                type="button"
-                onClick={() => {
-                  setEmail(demo.email);
-                  handleLogin(undefined, demo.email);
-                }}
-                className="p-2 rounded-lg border border-border bg-bg text-left hover:border-brand transition-colors text-xs"
-              >
-                <div className="font-semibold text-text truncate">{demo.label}</div>
-                <div className="text-[10px] text-muted truncate">{demo.email}</div>
-              </button>
-            ))}
+        {/* Quick Demo Sign-ins (Dev Mock only) */}
+        {import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === "true" && demoRoles.length > 0 && (
+          <div className="mt-6 pt-4 border-t border-border/40">
+            <p className="text-xs font-semibold text-muted mb-2">Quick Demo Sign In</p>
+            <div className="grid grid-cols-2 gap-2">
+              {demoRoles.map((demo) => (
+                <button
+                  key={demo.email}
+                  type="button"
+                  onClick={() => {
+                    setEmail(demo.email);
+                    handleLogin(undefined, demo.email);
+                  }}
+                  className="p-2 rounded-lg border border-border bg-bg text-left hover:border-brand transition-colors text-xs"
+                >
+                  <div className="font-semibold text-text truncate">{demo.label}</div>
+                  <div className="text-[10px] text-muted truncate">{demo.email}</div>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </motion.div>
     </div>
   );
