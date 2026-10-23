@@ -1,25 +1,27 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { authApi } from '../../api/endpoints/auth';
-import { useAuthStore } from '../../stores/auth.store';
-import { getRoleLandingRoute } from '../../lib/permissions';
-import { BigButton } from '../../components/common/BigButton';
-import { useTranslation } from 'react-i18next';
-import { KeyRound, Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
+import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { authApi } from "@/api/endpoints/auth";
+import { useAuthStore } from "@/stores/auth.store";
+import { getRoleLandingRoute } from "@/lib/permissions";
+import { BigButton } from "@/components/common/BigButton";
+import { useTranslation } from "react-i18next";
+import { KeyRound, Lock, Mail, ArrowRight, Eye, EyeOff, Globe } from "lucide-react";
 
 export const LoginPage: React.FC = () => {
-  const [email, setEmail] = useState('owner@ralypto.com');
-  const [password, setPassword] = useState('pass123');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("owner@ralypto.com");
+  const [password, setPassword] = useState("pass123");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
-  const { t } = useTranslation();
+  const { i18n } = useTranslation();
 
   const handleLogin = async (e?: React.FormEvent, customEmail?: string) => {
     if (e) e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     const targetEmail = customEmail || email;
@@ -27,7 +29,7 @@ export const LoginPage: React.FC = () => {
     try {
       const res = await authApi.login({
         email: targetEmail,
-        password: 'pass123',
+        password: password || "pass123",
       });
 
       setAuth({
@@ -41,121 +43,155 @@ export const LoginPage: React.FC = () => {
       const landingRoute = getRoleLandingRoute(res.user.role);
       navigate(landingRoute, { replace: true });
     } catch (err: any) {
-      setError(err.message || t('auth.invalidCredentials'));
+      setError(err?.message || "Invalid email or password. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   const demoRoles = [
-    { label: 'Owner / Manager', email: 'owner@ralypto.com', role: 'owner' },
-    { label: 'Cashier (POS)', email: 'cashier@ralypto.com', role: 'cashier' },
-    { label: 'Floor Waiter', email: 'waiter@ralypto.com', role: 'waiter' },
-    { label: 'Kitchen Chef', email: 'kitchen@ralypto.com', role: 'kitchen' },
-    { label: 'Accountant', email: 'accountant@ralypto.com', role: 'accountant' },
+    { label: "Owner / Manager", email: "owner@ralypto.com" },
+    { label: "Cashier (POS)", email: "cashier@ralypto.com" },
+    { label: "Floor Waiter", email: "waiter@ralypto.com" },
+    { label: "Kitchen Chef", email: "kitchen@ralypto.com" },
+    { label: "Accountant", email: "accountant@ralypto.com" },
   ];
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-charcoal selection:bg-brand-500 selection:text-white">
-      <div className="relative w-full max-w-md p-8 rounded-3xl glass-panel border border-zinc-800 shadow-2xl">
-        <div className="flex flex-col items-center text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-brand-950/80 border border-brand-800 flex items-center justify-center mb-4 glow-brand">
-            <img src="/logo.svg" alt="Ralypto" className="w-10 h-10" />
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-bg text-text selection:bg-brand selection:text-surface">
+      {/* Top right language switch */}
+      <div className="absolute top-6 right-6 flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 shadow-sm">
+        <Globe className="h-4 w-4 text-muted" />
+        <button
+          onClick={() => i18n.changeLanguage("en")}
+          className={`text-xs font-semibold ${i18n.language.startsWith("en") ? "text-brand" : "text-muted"}`}
+        >
+          EN
+        </button>
+        <span className="text-border">|</span>
+        <button
+          onClick={() => i18n.changeLanguage("si")}
+          className={`text-xs font-semibold ${i18n.language.startsWith("si") ? "text-brand" : "text-muted"}`}
+        >
+          SI
+        </button>
+        <span className="text-border">|</span>
+        <button
+          onClick={() => i18n.changeLanguage("ta")}
+          className={`text-xs font-semibold ${i18n.language.startsWith("ta") ? "text-brand" : "text-muted"}`}
+        >
+          TA
+        </button>
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+        className="w-full max-w-md rounded-card border border-border bg-surface p-8 shadow-card"
+      >
+        <div className="flex flex-col items-center text-center mb-6">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand text-surface font-bold text-2xl tracking-tighter mb-3">
+            R
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">{t('auth.title')}</h1>
-          <p className="mt-1 text-sm text-zinc-400">{t('auth.subtitle')}</p>
+          <h1 className="text-2xl font-semibold tracking-[-0.02em] text-text">Sign in to Ralypto</h1>
+          <p className="mt-1 text-sm text-muted">Management & reporting access</p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-red-950/60 border border-red-800/60 text-red-400 text-sm font-medium">
+          <div className="mb-4 rounded-btn bg-danger-soft border border-danger/20 p-3 text-sm font-medium text-danger">
             {error}
           </div>
         )}
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
-              {t('auth.emailLabel')}
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">
+              Email Address
             </label>
             <div className="relative">
-              <Mail className="absolute left-3.5 top-3.5 w-5 h-5 text-zinc-500" />
+              <Mail className="absolute left-3.5 top-3.5 h-5 w-5 text-muted" />
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="owner@ralypto.com"
-                className="w-full h-12 pl-11 pr-4 rounded-xl bg-zinc-900 border border-zinc-700/80 text-white placeholder-zinc-500 focus:outline-none focus:border-brand-500 text-sm"
+                className="w-full h-12 pl-11 pr-4 rounded-xl border border-border bg-bg text-text text-sm focus:outline-none focus:ring-2 focus:ring-info"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
-              {t('auth.passwordLabel')}
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">
+              Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3.5 top-3.5 w-5 h-5 text-zinc-500" />
+              <Lock className="absolute left-3.5 top-3.5 h-5 w-5 text-muted" />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full h-12 pl-11 pr-4 rounded-xl bg-zinc-900 border border-zinc-700/80 text-white placeholder-zinc-500 focus:outline-none focus:border-brand-500 text-sm"
+                placeholder="••••••••"
+                className="w-full h-12 pl-11 pr-12 rounded-xl border border-border bg-bg text-text text-sm focus:outline-none focus:ring-2 focus:ring-info"
               />
+              <button
+                type="button"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-3.5 text-muted hover:text-text p-0.5"
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
             </div>
           </div>
 
           <div className="pt-2">
             <BigButton
-              type="submit"
-              variant="brand"
-              size="touch-lg"
-              fullWidth
+              label={loading ? "Signing in..." : "Sign in"}
+              icon={ArrowRight}
+              variant="primary"
+              full
               disabled={loading}
-              icon={<ArrowRight className="w-5 h-5" />}
-            >
-              {loading ? t('common.loading') : t('auth.loginButton')}
-            </BigButton>
+              loading={loading}
+              type="submit"
+            />
           </div>
         </form>
 
-        <div className="mt-6 pt-6 border-t border-zinc-800 text-center">
+        <div className="mt-6 pt-5 border-t border-border/60 text-center">
           <Link
             to="/pin-login"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-brand-400 hover:text-brand-300 transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-brand hover:underline"
           >
-            <KeyRound className="w-4 h-4" />
-            <span>{t('auth.switchToPin')}</span>
+            <KeyRound className="h-4 w-4" />
+            <span>Staff PIN Login (Cashier / Waiter / Kitchen)</span>
           </Link>
         </div>
 
-        {/* Quick Demo Role Logins */}
-        <div className="mt-8 pt-6 border-t border-zinc-800/80">
-          <p className="text-xs font-semibold text-zinc-400 mb-3 flex items-center gap-1.5">
-            <ShieldCheck className="w-4 h-4 text-brand-500" />
-            <span>{t('auth.demoAccounts')}</span>
-          </p>
+        {/* Quick Demo Sign-ins */}
+        <div className="mt-6 pt-4 border-t border-border/40">
+          <p className="text-xs font-semibold text-muted mb-2">Quick Demo Sign In</p>
           <div className="grid grid-cols-2 gap-2">
             {demoRoles.map((demo) => (
               <button
-                key={demo.role}
+                key={demo.email}
                 type="button"
                 onClick={() => {
                   setEmail(demo.email);
                   handleLogin(undefined, demo.email);
                 }}
-                className="p-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-left transition-colors group"
+                className="p-2 rounded-lg border border-border bg-bg text-left hover:border-brand transition-colors text-xs"
               >
-                <p className="text-xs font-bold text-zinc-200 group-hover:text-brand-400">
-                  {demo.label}
-                </p>
-                <p className="text-[10px] text-zinc-500 truncate">{demo.email}</p>
+                <div className="font-semibold text-text truncate">{demo.label}</div>
+                <div className="text-[10px] text-muted truncate">{demo.email}</div>
               </button>
             ))}
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };
+export default LoginPage;

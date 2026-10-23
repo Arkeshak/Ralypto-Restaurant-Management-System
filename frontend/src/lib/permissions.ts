@@ -115,14 +115,14 @@ export function getRoleLandingRoute(role?: UserRole): string {
     case 'manager':
       return '/dashboard';
     case 'cashier':
-      return '/pos';
+      return '/billing';
     case 'waiter':
-      return '/waiter';
+      return '/tables';
     case 'kitchen':
       return '/kitchen';
     case 'accountant':
-      return '/accounting';
+      return '/accounts';
     default:
-      return '/pos';
+      return '/tables';
   }
 }

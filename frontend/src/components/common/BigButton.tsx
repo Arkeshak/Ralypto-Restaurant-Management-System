@@ -1,59 +1,56 @@
 import React from 'react';
+import { motion } from 'framer-motion';
+import { Loader2, type LucideIcon } from 'lucide-react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '../../lib/utils';
+import { cn } from '@/lib/cn';
 
-const buttonVariants = cva(
-  'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 select-none',
+const button = cva(
+  'inline-flex items-center justify-center gap-2 rounded-full font-semibold select-none transition-colors disabled:opacity-50 disabled:pointer-events-none cursor-pointer',
   {
     variants: {
       variant: {
-        brand:
-          'bg-brand-600 hover:bg-brand-700 text-white shadow-lg shadow-brand-900/30 font-semibold',
-        secondary:
-          'bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700/60',
-        outline:
-          'border-2 border-zinc-700 bg-transparent hover:bg-zinc-800/60 text-zinc-200',
-        destructive:
-          'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-900/30',
-        success:
-          'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-900/30',
-        ghost: 'bg-transparent hover:bg-zinc-800/60 text-zinc-300',
+        primary: 'bg-brand text-surface hover:bg-brand-hover',
+        secondary: 'bg-surface text-text border border-border hover:bg-bg',
+        success: 'bg-success text-white hover:opacity-90',
+        danger: 'bg-danger-soft text-danger border border-danger/30 hover:bg-danger hover:text-white',
+        ghost: 'text-text hover:bg-bg',
       },
       size: {
-        touch: 'min-h-[48px] px-5 py-3 text-base',
-        'touch-lg': 'min-h-[56px] px-6 py-4 text-lg font-bold',
-        sm: 'h-10 px-4 text-sm',
-        icon: 'h-12 w-12 p-0 flex items-center justify-center',
+        md: 'min-h-12 px-5 text-base',
+        lg: 'min-h-14 px-6 text-lg',
       },
-      fullWidth: {
-        true: 'w-full',
-      },
+      full: { true: 'w-full' },
     },
-    defaultVariants: {
-      variant: 'brand',
-      size: 'touch',
-      fullWidth: false,
-    },
+    defaultVariants: { variant: 'primary', size: 'md' },
   }
 );
 
-export interface BigButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  icon?: React.ReactNode;
-}
+type Props = Omit<React.ComponentProps<typeof motion.button>, 'children'> &
+  VariantProps<typeof button> & {
+    label: string;
+    icon?: LucideIcon;
+    loading?: boolean;
+    children?: React.ReactNode;
+  };
 
-export const BigButton = React.forwardRef<HTMLButtonElement, BigButtonProps>(
-  ({ className, variant, size, fullWidth, icon, children, ...props }, ref) => {
+export const BigButton = React.forwardRef<HTMLButtonElement, Props>(
+  ({ label, icon: Icon, loading, variant, size, full, className, disabled, children, ...rest }, ref) => {
     return (
-      <button
+      <motion.button
         ref={ref}
-        className={cn(buttonVariants({ variant, size, fullWidth }), className)}
-        {...props}
+        whileTap={{ scale: 0.97 }}
+        transition={{ duration: 0.08 }}
+        className={cn(button({ variant, size, full }), className)}
+        disabled={disabled || loading}
+        {...rest}
       >
-        {icon && <span className="mr-2.5 inline-flex items-center">{icon}</span>}
-        <span>{children}</span>
-      </button>
+        {loading ? (
+          <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+        ) : (
+          Icon && <Icon className="h-5 w-5" aria-hidden strokeWidth={1.75} />
+        )}
+        <span>{children || label}</span>
+      </motion.button>
     );
   }
 );

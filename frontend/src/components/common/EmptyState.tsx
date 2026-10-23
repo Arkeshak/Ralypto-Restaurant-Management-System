@@ -1,40 +1,49 @@
-import React from 'react';
-import { BigButton } from './BigButton';
-import { PackageOpen } from 'lucide-react';
+import { BigButton } from "./BigButton";
+import { PackageOpen, type LucideIcon } from "lucide-react";
+import { cn } from "@/lib/cn";
 
 interface EmptyStateProps {
-  icon?: React.ReactNode;
+  icon?: LucideIcon;
   title: string;
   description: string;
   actionLabel?: string;
+  actionIcon?: LucideIcon;
   onAction?: () => void;
   className?: string;
 }
 
-export const EmptyState: React.FC<EmptyStateProps> = ({
-  icon,
+export function EmptyState({
+  icon: Icon = PackageOpen,
   title,
   description,
   actionLabel,
+  actionIcon,
   onAction,
   className,
-}) => {
+}: EmptyStateProps) {
   return (
     <div
-      className={`flex flex-col items-center justify-center p-8 text-center rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/30 ${className || ''}`}
+      className={cn(
+        "flex flex-col items-center justify-center p-12 text-center rounded-card border border-dashed border-border bg-surface",
+        className
+      )}
     >
-      <div className="p-4 rounded-2xl bg-zinc-900 text-zinc-500 mb-4 border border-zinc-800">
-        {icon || <PackageOpen className="w-10 h-10" />}
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-soft text-muted mb-4">
+        <Icon className="h-8 w-8" aria-hidden />
       </div>
-      <h3 className="text-lg font-bold text-zinc-200">{title}</h3>
-      <p className="mt-1 max-w-sm text-sm text-zinc-400">{description}</p>
+      <h3 className="text-xl font-semibold tracking-[-0.02em] text-text">{title}</h3>
+      <p className="mt-1.5 max-w-md text-base text-muted">{description}</p>
       {actionLabel && onAction && (
-        <div className="mt-5">
-          <BigButton variant="secondary" size="sm" onClick={onAction}>
-            {actionLabel}
-          </BigButton>
+        <div className="mt-6">
+          <BigButton
+            label={actionLabel}
+            icon={actionIcon}
+            variant="primary"
+            size="md"
+            onClick={onAction}
+          />
         </div>
       )}
     </div>
   );
-};
+}

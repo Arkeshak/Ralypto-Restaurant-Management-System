@@ -19,17 +19,28 @@ In a busy, fast-paced restaurant environment with grease on fingers, bright kitc
 
 ---
 
-## 2. Fixed Semantic Color Code
+## 2. Colour Direction (Apple Clean Black & White)
 
-Color meanings are universal and strictly preserved across all modules to reduce cognitive load:
+The design aesthetic is inspired directly by **apple.com**: calm, clean, quiet, and premium with generous whitespace.
 
-| Semantic State | Color Palette | Tailwind Class | Restaurant Context Meaning |
+- **Brand & Base Colours**:
+  - Background: Light grey (`#f5f5f7`)
+  - Surfaces: Pure white (`#ffffff`) cards with 18px radius and 1px hairline border (`#d2d2d7`)
+  - Typography: Near-black text (`#1d1d1f`), secondary muted text (`#6e6e73`)
+  - **Black is the brand colour**: Primary action buttons, active navigation indicator, and brand mark are solid black (`#1d1d1f` / `#000000`).
+  - **No brand red, no gradients, no neon accents, no colored card backgrounds**.
+  - Blue (`#0071e3`) is reserved strictly for links and accessibility keyboard focus rings.
+
+- **Status Colours (Small Elements Only)**:
+  Status colours are used *only* on small indicators (status pills, 8px dots, badge outlines). They are never applied as large card or screen backgrounds. Status must always be communicated via **Color + Icon + Text**, never color alone:
+
+| Semantic State | Tone | Hex | Meaning in Ralypto |
 | :--- | :--- | :--- | :--- |
-| **Available / Done / Success** | **Emerald Green** | `bg-emerald-600` / `text-emerald-500` | Table is free; ticket is ready; payment received |
-| **Busy / Occupied / Problem** | **Crimson Red** | `bg-red-600` / `text-red-500` | Table is occupied; delayed order; voided item; alert |
-| **Waiting / In Progress** | **Amber Yellow** | `bg-amber-500` / `text-amber-500` | Food is cooking in kitchen; bill requested; pending |
-| **Information / Neutral** | **Sky Blue** | `bg-sky-600` / `text-sky-500` | Takeaway order; active shift details; notes |
-| **Dark Theme Slate** | **Charcoal / Zinc** | `bg-zinc-900` / `bg-zinc-950` | Default high-contrast dark theme background |
+| **Free / Done / Paid** | `success` | `#248a3d` (soft: `#e9f6ec`) | Table is vacant; kitchen ticket ready; payment received |
+| **Waiting / Low Stock** | `warning` | `#b25000` (soft: `#fff4e5`) | Food is cooking; order pending; inventory below reorder |
+| **Busy** | `busy` | `#c93400` (soft: `#fdeee6`) | Table is occupied; kitchen line busy |
+| **Information / Neutral** | `info` | `#0071e3` (soft: `#e8f2fd`) | Takeaway / Delivery note; shift details |
+| **Danger / Problem** | `danger` | `#d70015` (soft: `#fdebed`) | Void item; cancel order; refund; delete action |
 
 ---
 
