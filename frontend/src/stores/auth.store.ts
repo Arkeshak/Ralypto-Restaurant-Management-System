@@ -49,7 +49,7 @@ export const PLAN_FEATURE_FLAGS_MAP: Record<PlanCode, FeatureFlags> = {
     accounting_ledger: false,
     hr_payroll: false,
     multi_branch: false,
-    ai_assistant: false,
+    ai_assistant: true,
     ai_stock_prediction: true,
     ai_menu_builder: false,
   },

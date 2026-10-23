@@ -18,6 +18,7 @@ import {
   Settings,
   ShieldCheck,
   Lock,
+  CalendarCheck,
 } from 'lucide-react';
 import { useUiStore } from '../../stores/ui.store';
 import type { FeatureFlags } from '../../api/types';
@@ -42,6 +43,12 @@ export const Sidebar: React.FC = () => {
       icon: <LayoutGrid className="w-5 h-5" />,
       featureKey: 'pos_billing',
       allowedRoles: ['owner', 'manager', 'cashier', 'super_admin'],
+    },
+    {
+      to: '/reservations',
+      labelKey: 'nav.reservations',
+      icon: <CalendarCheck className="w-5 h-5" />,
+      allowedRoles: ['owner', 'manager', 'cashier', 'waiter', 'super_admin'],
     },
     {
       to: '/orders',

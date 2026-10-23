@@ -38,19 +38,23 @@ This document defines the relational database architecture for Ralypto.
 - **`users`**: Platform staff accounts.
   - Fields: `id`, `restaurant_id`, `branch_id`, `role_id`, `first_name`, `last_name`, `email` (nullable for waiters), `password_hash`, `pin_hash` (4-digit numeric PIN for quick terminal switch), `phone`, `is_active`, `last_login_at`.
 - **`audit_logs`**: Immutable security logs for manager overrides and sensitive actions.
-  - Fields: `id`, `restaurant_id`, `user_id`, `action`, `resource_type`, `resource_id`, `details` (`JSONB`), `ip_address`, `created_at`.
+  - Fields: `id`, `restaurant_id`, `user_id`, `actor_type` (`user`, `ai`), `action`, `resource_type`, `resource_id`, `details` (`JSONB`), `ip_address`, `created_at`.
 
-### Floor & Dining
+### Floor, Dining & Reservations
 - **`areas`**: Floor zones (e.g. `Ground Floor`, `Terrace`, `AC Dining`, `Rooftop Bar`).
   - Fields: `id`, `restaurant_id`, `branch_id`, `name`, `sort_order`.
 - **`tables`**: Dining tables with seating capacity and live occupancy.
   - Fields: `id`, `restaurant_id`, `branch_id`, `area_id`, `number` (`"Table 5"`), `capacity`, `status` (`available`, `occupied`, `billed`, `reserved`, `cleaning`), `qr_code_hash`, `active_order_id`, `current_waiter_id`.
+- **`reservations`**: Advanced table bookings from AI voice agents, web widgets, and staff.
+  - Fields: `id`, `restaurant_id`, `branch_id`, `customer_name`, `customer_phone`, `party_size`, `reservation_time`, `duration_minutes` (default 90), `table_id` (nullable until seated), `status` (`pending`, `confirmed`, `seated`, `no_show`, `cancelled`), `source` (`web_voice`, `whatsapp`, `phone`, `staff`), `special_requests`, `created_at`.
+- **`waitlist`**: Real-time queuing when all tables are occupied.
+  - Fields: `id`, `restaurant_id`, `customer_name`, `customer_phone`, `party_size`, `estimated_wait_minutes`, `status` (`waiting`, `notified`, `seated`, `left`), `notified_at`, `created_at`.
 
 ### Menu & Recipe Engineering
 - **`categories`**: Menu classification (e.g. `Rice & Kottu`, `Appetizers`, `Beverages`).
   - Fields: `id`, `restaurant_id`, `name`, `icon`, `sort_order`, `is_active`, `target_station` (`kitchen`, `bar`).
 - **`menu_items`**: Sellable food and beverage products.
-  - Fields: `id`, `restaurant_id`, `category_id`, `name`, `description`, `price_cents`, `cost_cents`, `image_url`, `is_veg`, `is_spicy`, `is_available`, `sku`, `preparation_time_minutes`.
+  - Fields: `id`, `restaurant_id`, `category_id`, `name`, `aliases` (`text[]` - multi-lingual phonetics, e.g. `['kottu', 'kothu', 'කොත්තු', 'கொத்து']`), `description`, `price_cents`, `cost_cents`, `image_url`, `is_veg`, `is_spicy`, `is_available`, `sku`, `preparation_time_minutes`.
 - **`modifiers`**: Customization options (e.g. `Spiciness Level: Mild, Medium, Extra Spicy`, `Portion: Regular, Large`).
   - Fields: `id`, `restaurant_id`, `menu_item_id`, `name`, `price_delta_cents`, `is_required`, `max_select`.
 - **`recipes`**: Bill of Materials (BOM) linking a menu item to raw ingredients.
@@ -59,8 +63,8 @@ This document defines the relational database architecture for Ralypto.
   - Fields: `id`, `recipe_id`, `stock_item_id`, `quantity_required`, `unit_of_measure`.
 
 ### Orders & Kitchen Display
-- **`orders`**: Transaction orders across dine-in, takeaway, and delivery.
-  - Fields: `id`, `restaurant_id`, `branch_id`, `order_number` (human-readable e.g. `ORD-2026-1004`), `table_id`, `customer_id`, `order_type` (`dine_in`, `takeaway`, `delivery`, `qr_self_order`), `status` (`draft`, `confirmed`, `preparing`, `ready`, `billed`, `completed`, `voided`), `waiter_id`, `cashier_id`, `subtotal_cents`, `discount_cents`, `discount_reason`, `tax_cents`, `service_charge_cents`, `total_cents`, `client_created_uuid`, `created_at`, `closed_at`.
+- **`orders`**: Transaction orders across dine-in, takeaway, voice, and delivery.
+  - Fields: `id`, `restaurant_id`, `branch_id`, `order_number` (human-readable e.g. `ORD-2026-1004`), `table_id`, `customer_id`, `order_type` (`dine_in`, `takeaway`, `delivery`, `qr_self_order`), `source` (`pos`, `waiter`, `qr`, `voice_waiter`, `voice_qr`, `whatsapp`, `phone`), `ai_assisted` (`boolean`), `status` (`draft`, `confirmed`, `preparing`, `ready`, `billed`, `completed`, `voided`), `waiter_id`, `cashier_id`, `subtotal_cents`, `discount_cents`, `discount_reason`, `tax_cents`, `service_charge_cents`, `total_cents`, `client_created_uuid`, `created_at`, `closed_at`.
 - **`order_items`**: Individual dishes ordered.
   - Fields: `id`, `order_id`, `menu_item_id`, `quantity`, `unit_price_cents`, `subtotal_cents`, `notes`, `selected_modifiers` (`JSONB`), `status` (`pending`, `fired`, `preparing`, `ready`, `served`, `canceled`), `kot_id`.
 - **`kots`**: Kitchen Order Tickets generated for cooking stations.

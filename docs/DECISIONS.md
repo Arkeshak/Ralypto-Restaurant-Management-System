@@ -180,3 +180,32 @@ This document records the architectural and technology decisions made for Ralypt
 - **Context**: High-volume restaurants generate thousands of item transactions daily. Rendering massive table DOM nodes causes mobile tablet crashes.
 - **Decision**: Built a reusable `ReportTable` component utilizing `@tanstack/react-virtual`. It powers all 12 core reports, supports 10,000+ rows with flat memory overhead, and provides built-in CSV export and 80mm/A4 print styling.
 
+---
+
+## ADR 018: AI & Voice Strategy, Reservations Module, and Architecture
+- **Date**: 2026-10-23
+- **Status**: Accepted
+- **Context**: Most restaurant POS systems force staff to navigate deep nested menus. Ralypto's key competitive differentiator is "Just talk to Ralypto": push-to-talk voice ordering in noisy environments, an automated AI table booking agent, and executive conversational insights answering questions from real sales data.
+- **Decisions**:
+  1. **5 Hero Features Focus**:
+     - *Hero 1*: AI Booking Agent (Web voice & chat widget, WhatsApp, inbound telephony).
+     - *Hero 2*: Waiter Voice Order (Push-to-talk draft with table number & cooking notes).
+     - *Hero 3*: QR Menu Voice Order (Diner speaks in English or Sinhala/Tamil, cart populates).
+     - *Hero 4*: Ask Ralypto + Daily Morning WhatsApp Summary.
+     - *Hero 5*: Demand Forecast + Kitchen Prep List & Supplier Stock Order Draft.
+  2. **Core Principle: AI Proposes, Human Confirms**:
+     - Voice creates an editable draft. Staff or customer taps "Confirm".
+     - Sensitive actions (payments, refunds, voids, price changes) strictly require a manual tap plus Manager PIN. They can never be performed by voice alone.
+  3. **Multi-Lingual Strategy (English, Sinhala, Tamil)**:
+     - Voice recognition prioritizes English and Sinhala (and mixed "Singlish"), followed by Tamil.
+     - Every menu item stores aliases across spellings and languages (`aliases: string[]`) for fuzzy phonetic matching.
+  4. **Reservations Module First-Class Integration**:
+     - Built dedicated Reservations entity, waitlist queue, table availability rules, and visual frontend timeline.
+  5. **Architecture & Service Responsibility**:
+     - Frontend (Arkesh): Push-to-talk UI, Web Speech API fallback, live draft review sheets, Reservations management UI, Ask Ralypto chat drawer.
+     - AI Service (Python/FastAPI): LLM tool-calling agent, speech-to-text pipeline, ML demand forecasting.
+     - Core Backend (Friend): Exposes secure Tools API endpoints, reserves tables, creates draft orders, and publishes real-time events.
+  6. **Cost Control & Fair Use**:
+     - Voice orders and AI questions operate on monthly usage tiers (Standard: 50 orders/20 questions; Premium: Unlimited fair use). Inbound phone minutes billed as an add-on.
+
+

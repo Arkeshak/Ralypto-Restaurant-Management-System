@@ -47,9 +47,10 @@ describe('Role and Plan Guards Logic', () => {
     expect(isFeatureGranted('standard', 'delivery_integration')).toBe(true);
     expect(isFeatureGranted('standard', 'qr_self_order')).toBe(true);
 
-    // Standard still locks Accounting & AI
+    // Standard unlocks AI Assistant (with quota) but locks Accounting & HR
+    expect(isFeatureGranted('standard', 'ai_assistant')).toBe(true);
     expect(isFeatureGranted('standard', 'accounting_ledger')).toBe(false);
-    expect(isFeatureGranted('standard', 'ai_assistant')).toBe(false);
+    expect(isFeatureGranted('standard', 'hr_payroll')).toBe(false);
   });
 
   it('unlocks complete feature set on Premium plan', () => {

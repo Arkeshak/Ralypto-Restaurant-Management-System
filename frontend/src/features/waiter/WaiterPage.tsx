@@ -15,10 +15,15 @@ import { BigButton } from "@/components/common/BigButton";
 import { formatMoney } from "@/lib/formatMoney";
 import { toast } from "sonner";
 import { MOCK_MENU_ITEMS } from "@/mocks/data/mockData";
+import { MicButton } from "@/components/voice/MicButton";
+import { VoiceOrderDraftModal } from "@/components/voice/VoiceOrderDraftModal";
+import { parseVoiceOrder } from "@/lib/voiceParser";
+import type { VoiceOrderDraft } from "@/api/types";
 
 export function WaiterPage() {
   const [activeTab, setActiveTab] = useState<"tables" | "orders" | "ready" | "menu">("tables");
   const [selectedTable, setSelectedTable] = useState<string>("T2");
+  const [activeVoiceDraft, setActiveVoiceDraft] = useState<VoiceOrderDraft | null>(null);
 
   // Waiter cart
   const [waiterCart, setWaiterCart] = useState<
@@ -49,6 +54,41 @@ export function WaiterPage() {
     ]);
   };
 
+  const handleVoiceTranscript = (transcript: string) => {
+    const draft = parseVoiceOrder(transcript, MOCK_MENU_ITEMS);
+    setActiveVoiceDraft(draft);
+  };
+
+  const handleConfirmVoiceDraft = (confirmed: VoiceOrderDraft) => {
+    if (confirmed.tableNumber) {
+      setSelectedTable(confirmed.tableNumber.replace('Table ', 'T'));
+    }
+
+    const newCartItems = confirmed.items.map((i) => ({
+      id: i.menuItemId,
+      name: i.name,
+      priceCents: i.unitPriceCents,
+      qty: i.quantity,
+    }));
+
+    setWaiterCart((prev) => {
+      const merged = [...prev];
+      for (const item of newCartItems) {
+        const existing = merged.find((m) => m.id === item.id);
+        if (existing) {
+          existing.qty += item.qty;
+        } else {
+          merged.push(item);
+        }
+      }
+      return merged;
+    });
+
+    toast.success(`Voice order added to ${confirmed.tableNumber || selectedTable}`);
+    setActiveVoiceDraft(null);
+    setActiveTab("menu");
+  };
+
   const handleSendOrder = () => {
     toast.success(`Order for ${selectedTable} sent to Kitchen`);
     setWaiterCart([]);
@@ -67,12 +107,19 @@ export function WaiterPage() {
             Table: {selectedTable}
           </span>
         </div>
-        <button
-          onClick={handleSimulateReadyAlert}
-          className="text-xs font-semibold rounded-full border border-border bg-bg px-3 py-1.5 hover:bg-surface text-muted hover:text-text transition-colors"
-        >
-          Test Ready Alert
-        </button>
+        <div className="flex items-center gap-2.5">
+          <MicButton
+            size="sm"
+            label="Voice Order"
+            onTranscript={handleVoiceTranscript}
+          />
+          <button
+            onClick={handleSimulateReadyAlert}
+            className="text-xs font-semibold rounded-full border border-border bg-bg px-3 py-1.5 hover:bg-surface text-muted hover:text-text transition-colors"
+          >
+            Test Ready Alert
+          </button>
+        </div>
       </div>
 
       {/* Main Tab Content */}
@@ -362,6 +409,16 @@ export function WaiterPage() {
           Orders
         </button>
       </div>
+
+      {activeVoiceDraft && (
+        <VoiceOrderDraftModal
+          draft={activeVoiceDraft}
+          isOpen={!!activeVoiceDraft}
+          onClose={() => setActiveVoiceDraft(null)}
+          onConfirm={handleConfirmVoiceDraft}
+          confirmLabel="Add to Waiter Cart"
+        />
+      )}
     </div>
   );
 }

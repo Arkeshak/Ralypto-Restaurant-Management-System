@@ -24,6 +24,7 @@ const StaffPage = lazy(() => import("../features/staff/StaffPage"));
 const AiAssistantPage = lazy(() => import("../features/ai/AiAssistantPage"));
 const SubscriptionPage = lazy(() => import("../features/subscription/SubscriptionPage"));
 const UpgradePage = lazy(() => import("../features/subscription/UpgradePage"));
+const ReservationsPage = lazy(() => import("../features/reservations/ReservationsPage"));
 const SettingsPage = lazy(() => import("../features/settings/SettingsPage"));
 const AdminPage = lazy(() => import("../features/admin/AdminPage"));
 const OnboardingPage = lazy(() => import("../features/onboarding/OnboardingPage"));
@@ -94,6 +95,16 @@ export const router = createBrowserRouter([
           <RequireRole allowedRoles={["owner", "manager", "cashier", "waiter", "super_admin"]}>
             <Suspense fallback={<PageLoading />}>
               <TablesPage />
+            </Suspense>
+          </RequireRole>
+        ),
+      },
+      {
+        path: "reservations",
+        element: (
+          <RequireRole allowedRoles={["owner", "manager", "cashier", "waiter", "super_admin"]}>
+            <Suspense fallback={<PageLoading />}>
+              <ReservationsPage />
             </Suspense>
           </RequireRole>
         ),
@@ -238,8 +249,8 @@ export const router = createBrowserRouter([
           <RequireRole allowedRoles={["owner", "manager", "super_admin"]}>
             <RequirePlanFeature
               feature="ai_assistant"
-              featureTitle="Gemini AI Hospitality Advisor"
-              minPlanName="Premium Plan"
+              featureTitle="Ralypto AI Assistant & Analytics"
+              minPlanName="Standard Plan"
             >
               <Suspense fallback={<PageLoading />}>
                 <AiAssistantPage />

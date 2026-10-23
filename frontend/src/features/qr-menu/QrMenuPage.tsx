@@ -16,7 +16,10 @@ import { BigButton } from "@/components/common/BigButton";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { MOCK_CATEGORIES, MOCK_MENU_ITEMS } from "@/mocks/data/mockData";
-import type { MenuItem } from "@/api/types";
+import type { MenuItem, VoiceOrderDraft } from "@/api/types";
+import { MicButton } from "@/components/voice/MicButton";
+import { VoiceOrderDraftModal } from "@/components/voice/VoiceOrderDraftModal";
+import { parseVoiceOrder } from "@/lib/voiceParser";
 
 export function QrMenuPage() {
   const { tableNumber = "5" } = useParams();
@@ -26,6 +29,32 @@ export function QrMenuPage() {
   const [cart, setCart] = useState<Array<{ item: MenuItem; qty: number }>>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isOrderConfirmed, setIsOrderConfirmed] = useState(false);
+  const [activeVoiceDraft, setActiveVoiceDraft] = useState<VoiceOrderDraft | null>(null);
+
+  const handleVoiceTranscript = (transcript: string) => {
+    const draft = parseVoiceOrder(transcript, MOCK_MENU_ITEMS);
+    setActiveVoiceDraft(draft);
+  };
+
+  const handleConfirmVoiceDraft = (confirmed: VoiceOrderDraft) => {
+    for (const voiceItem of confirmed.items) {
+      const match = MOCK_MENU_ITEMS.find((m) => m.id === voiceItem.menuItemId);
+      if (match) {
+        setCart((prev) => {
+          const existing = prev.find((i) => i.item.id === match.id);
+          if (existing) {
+            return prev.map((i) =>
+              i.item.id === match.id ? { ...i, qty: i.qty + voiceItem.quantity } : i
+            );
+          }
+          return [...prev, { item: match, qty: voiceItem.quantity }];
+        });
+      }
+    }
+    toast.success("Voice items added to your order cart!");
+    setActiveVoiceDraft(null);
+    setIsCartOpen(true);
+  };
 
   const filteredItems = MOCK_MENU_ITEMS.filter(
     (item) => selectedCategory === "all" || item.categoryId === selectedCategory
@@ -123,7 +152,7 @@ export function QrMenuPage() {
       {/* Main Container */}
       <main className="mx-auto max-w-xl px-4 pt-4">
         {/* Quick Action Buttons: Call Waiter & Request Bill */}
-        <div className="grid grid-cols-2 gap-3 mb-5">
+        <div className="grid grid-cols-2 gap-3 mb-4">
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={handleCallWaiter}
@@ -140,6 +169,20 @@ export function QrMenuPage() {
             <Receipt className="h-4 w-4 text-brand" />
             <span>Request Bill</span>
           </motion.button>
+        </div>
+
+        {/* Voice Ordering Banner */}
+        <div className="mb-5 p-3.5 rounded-2xl bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-950 border border-zinc-800 flex items-center justify-between gap-3 shadow-sm">
+          <div className="flex-1 pr-2">
+            <div className="text-xs font-bold text-white flex items-center gap-1.5">
+              <span>Just talk to Ralypto</span>
+              <span className="text-[10px] font-normal text-zinc-400">EN · සිං · தம</span>
+            </div>
+            <p className="text-[11px] text-zinc-400 mt-0.5">
+              Tap mic & speak: e.g. "two chicken kottu, one lime juice"
+            </p>
+          </div>
+          <MicButton size="md" onTranscript={handleVoiceTranscript} />
         </div>
 
         {/* Order Confirmed Banner if just sent */}
@@ -358,6 +401,17 @@ export function QrMenuPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Voice Order Draft Review Modal */}
+      {activeVoiceDraft && (
+        <VoiceOrderDraftModal
+          draft={activeVoiceDraft}
+          isOpen={!!activeVoiceDraft}
+          onClose={() => setActiveVoiceDraft(null)}
+          onConfirm={handleConfirmVoiceDraft}
+          confirmLabel="Add to My Cart"
+        />
+      )}
     </div>
   );
 }

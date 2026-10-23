@@ -14,7 +14,8 @@
     "settings": "Settings",
     "admin": "Super Admin",
     "dashboard": "Dashboard",
-    "orders": "Order History"
+    "orders": "Order History",
+    "reservations": "Reservations & Waitlist"
   },
   "auth": {
     "title": "Sign In to Ralypto",
