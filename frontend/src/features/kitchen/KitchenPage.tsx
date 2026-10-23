@@ -11,6 +11,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { kitchenApi } from "@/api/endpoints/kitchen";
 
 interface KitchenTicketItem {
   id: string;
@@ -119,7 +120,7 @@ export function KitchenPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleAdvanceStatus = (ticket: KitchenTicket) => {
+  const handleAdvanceStatus = async (ticket: KitchenTicket) => {
     let nextStatus: "new" | "preparing" | "ready" | "done";
     let message = "";
 
@@ -134,6 +135,9 @@ export function KitchenPage() {
       message = `Collected ${ticket.tableNumber}`;
     }
 
+    const previousTickets = [...tickets];
+
+    // 1. Optimistic update
     if (nextStatus === "done") {
       setTickets((prev) => prev.filter((t) => t.id !== ticket.id));
     } else {
@@ -144,13 +148,31 @@ export function KitchenPage() {
 
     toast.success(message);
     playAlertSound();
+
+    // 2. Perform API call
+    try {
+      const apiStatus = nextStatus === "done" ? "collected" : nextStatus;
+      await kitchenApi.updateTicketStatus(ticket.id, apiStatus);
+    } catch {
+      // 3. Rollback on failure
+      setTickets(previousTickets);
+      toast.error(`Failed to update ${ticket.tableNumber}. Reverting status.`);
+    }
   };
 
-  const handleRecallTicket = (ticket: KitchenTicket) => {
+  const handleRecallTicket = async (ticket: KitchenTicket) => {
+    const previousTickets = [...tickets];
     setTickets((prev) =>
       prev.map((t) => (t.id === ticket.id ? { ...t, status: "preparing" } : t))
     );
     toast.info(`Recalled ${ticket.tableNumber} back to Preparing queue`);
+
+    try {
+      await kitchenApi.updateTicketStatus(ticket.id, "preparing");
+    } catch {
+      setTickets(previousTickets);
+      toast.error(`Failed to recall ${ticket.tableNumber}. Reverting.`);
+    }
   };
 
   const filteredTickets = tickets.filter(

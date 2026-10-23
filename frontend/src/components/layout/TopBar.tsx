@@ -15,11 +15,17 @@ import {
 } from 'lucide-react';
 import type { PlanCode } from '../../api/types';
 import { useUiStore } from '../../stores/ui.store';
+import { socket } from '@/api/socket';
 
 export const TopBar: React.FC = () => {
   const { user, restaurant, plan, setMockPlan, logout } = useAuth();
   const { isSidebarOpen, setSidebarOpen, themeMode, setThemeMode } = useUiStore();
   const { t, i18n } = useTranslation();
+  const [isSocketConnected, setIsSocketConnected] = React.useState(socket.connected);
+
+  React.useEffect(() => {
+    return socket.onStatusChange(setIsSocketConnected);
+  }, []);
 
   const handlePlanChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setMockPlan(e.target.value as PlanCode);
@@ -57,6 +63,17 @@ export const TopBar: React.FC = () => {
 
         {/* Offline Badge */}
         <OfflineBadge />
+
+        {/* Live Updates Status */}
+        {!isSocketConnected && (
+          <span
+            title="Live WebSocket paused. Automatic 10-second polling active."
+            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 border border-amber-500/30"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+            <span>Live updates paused</span>
+          </span>
+        )}
 
         {/* Mock Plan Switcher (Visible ONLY during Dev with Mocks enabled) */}
         {import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === "true" && (

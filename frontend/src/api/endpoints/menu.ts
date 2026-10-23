@@ -18,4 +18,10 @@ export const menuApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  updateItem: (id: string, data: Partial<MenuItem>) =>
+    apiClient<MenuItem>(`/menu/items/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
 };

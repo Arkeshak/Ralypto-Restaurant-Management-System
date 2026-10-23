@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { formatMoney } from "@/lib/formatMoney";
 import { toast } from "sonner";
 import { useReadOnly } from "@/hooks/useReadOnly";
+import { menuApi } from "@/api/endpoints/menu";
 import { MOCK_CATEGORIES, MOCK_MENU_ITEMS } from "@/mocks/data/mockData";
 import type { MenuItem } from "@/api/types";
 
@@ -69,13 +70,16 @@ export function MenuManagerPage() {
     overscan: 5,
   });
 
-  // Toggle availability in 1 tap
-  const handleToggleAvailability = (item: MenuItem) => {
+  // Toggle availability in 1 tap (optimistic with rollback)
+  const handleToggleAvailability = async (item: MenuItem) => {
     if (isReadOnly) {
       toast.error("Action blocked: Your account is in Read-Only mode. Please renew your plan.");
       return;
     }
-    const nextAvailable = !item.isAvailable;
+    const previousAvailable = item.isAvailable;
+    const nextAvailable = !previousAvailable;
+
+    // 1. Optimistic immediate update
     setItems((prev) =>
       prev.map((i) => (i.id === item.id ? { ...i, isAvailable: nextAvailable } : i))
     );
@@ -83,6 +87,17 @@ export function MenuManagerPage() {
       toast.success(`${item.name} is now Available`);
     } else {
       toast.warning(`${item.name} marked as Sold Out`);
+    }
+
+    // 2. Perform backend update
+    try {
+      await menuApi.updateItem(item.id, { isAvailable: nextAvailable });
+    } catch {
+      // 3. Rollback if call fails
+      setItems((prev) =>
+        prev.map((i) => (i.id === item.id ? { ...i, isAvailable: previousAvailable } : i))
+      );
+      toast.error(`Failed to update ${item.name}. Reverting to ${previousAvailable ? 'Available' : 'Sold Out'}.`);
     }
   };
 

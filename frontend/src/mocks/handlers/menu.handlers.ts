@@ -25,4 +25,25 @@ export const menuHandlers = [
 
     return HttpResponse.json(filtered);
   }),
+
+  http.post('*/menu/items', async ({ request }) => {
+    const data = (await request.json()) as any;
+    const newItem = {
+      id: `item-${Date.now()}`,
+      ...data,
+    };
+    MOCK_MENU_ITEMS.push(newItem);
+    return HttpResponse.json(newItem, { status: 201 });
+  }),
+
+  http.patch('*/menu/items/:id', async ({ params, request }) => {
+    const { id } = params;
+    const updates = (await request.json()) as any;
+    const item = MOCK_MENU_ITEMS.find((i) => i.id === id);
+    if (!item) {
+      return HttpResponse.json({ code: 'NOT_FOUND', message: 'Item not found' }, { status: 404 });
+    }
+    Object.assign(item, updates);
+    return HttpResponse.json(item);
+  }),
 ];
