@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="ralyptoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ef4444" />
+      <stop offset="100%" stop-color="#b91c1c" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="#09090b" />
+  <rect x="8" y="8" width="240" height="240" rx="48" fill="none" stroke="#27272a" stroke-width="2" />
+  <g transform="translate(48, 48)">
+    <!-- Cloche dome -->
+    <path d="M 10 110 C 10 50, 150 50, 150 110 Z" fill="url(#ralyptoGrad)" filter="url(#glow)" />
+    <!-- Handle -->
+    <circle cx="80" cy="42" r="12" fill="#fca5a5" />
+    <!-- Plate base -->
+    <rect x="0" y="112" width="160" height="12" rx="6" fill="#f87171" />
+    <!-- Spark / Steam line -->
+    <path d="M 65 24 Q 72 10 68 0" stroke="#fca5a5" stroke-width="4" stroke-linecap="round" fill="none" />
+    <path d="M 95 24 Q 88 10 92 0" stroke="#fca5a5" stroke-width="4" stroke-linecap="round" fill="none" />
+  </g>
+</svg>
