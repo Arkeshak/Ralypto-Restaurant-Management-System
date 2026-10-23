@@ -96,10 +96,12 @@ export function AppShell() {
         {/* Sidebar Footer */}
         <div className="border-t border-border/40 p-3">
           <div className="rounded-btn bg-bg p-2.5 flex items-center justify-between">
-            <div className="min-w-0">
+            <NavLink to="/subscription" className="min-w-0 flex-1 hover:opacity-80 transition-opacity">
               <p className="truncate text-xs font-semibold text-text">{user.name}</p>
-              <p className="truncate text-xs text-muted capitalize">{plan?.name || "Standard"}</p>
-            </div>
+              <p className="truncate text-xs text-muted capitalize flex items-center gap-1">
+                <span>{plan?.name || "Standard Plan"}</span>
+              </p>
+            </NavLink>
             <button
               onClick={handleLogout}
               title="Sign Out"
