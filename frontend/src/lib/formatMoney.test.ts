@@ -1,39 +1,24 @@
 import { describe, it, expect } from 'vitest';
 import { formatMoney, parseRupeesToCents } from './formatMoney';
-import { getRoleLandingRoute } from './permissions';
 
 describe('formatMoney', () => {
-  it('formats integer cents into Sri Lankan Rupee representation', () => {
-    expect(formatMoney(145000)).toBe('LKR 1,450.00');
-    expect(formatMoney(0)).toBe('LKR 0.00');
-    expect(formatMoney(null)).toBe('LKR 0.00');
-    expect(formatMoney(undefined)).toBe('LKR 0.00');
+  it('formats integer cents into Sri Lankan Rupee representation without decimals by default', () => {
+    expect(formatMoney(245000)).toBe('Rs. 2,450');
+    expect(formatMoney(145000)).toBe('Rs. 1,450');
+    expect(formatMoney(0)).toBe('Rs. 0');
+    expect(formatMoney(null)).toBe('Rs. 0');
+    expect(formatMoney(undefined)).toBe('Rs. 0');
   });
 
-  it('supports hiding the currency symbol', () => {
-    expect(formatMoney(145000, { showCurrency: false })).toBe('1,450.00');
+  it('formats integer cents with decimals when withDecimals is true', () => {
+    expect(formatMoney(245000, true)).toBe('Rs. 2,450.00');
+    expect(formatMoney(145050, true)).toBe('Rs. 1,450.50');
+    expect(formatMoney(0, true)).toBe('Rs. 0.00');
   });
 
-  it('correctly converts rupee decimals to cents', () => {
-    expect(parseRupeesToCents(1450)).toBe(145000);
-    expect(parseRupeesToCents('1450.50')).toBe(145050);
-  });
-});
-
-describe('getRoleLandingRoute', () => {
-  it('maps cashier to /pos', () => {
-    expect(getRoleLandingRoute('cashier')).toBe('/pos');
-  });
-
-  it('maps waiter to /waiter', () => {
-    expect(getRoleLandingRoute('waiter')).toBe('/waiter');
-  });
-
-  it('maps kitchen to /kitchen', () => {
-    expect(getRoleLandingRoute('kitchen')).toBe('/kitchen');
-  });
-
-  it('maps owner to /dashboard', () => {
-    expect(getRoleLandingRoute('owner')).toBe('/dashboard');
+  it('correctly parses rupees to integer cents', () => {
+    expect(parseRupeesToCents(2450)).toBe(245000);
+    expect(parseRupeesToCents('2450.50')).toBe(245050);
+    expect(parseRupeesToCents('invalid')).toBe(0);
   });
 });

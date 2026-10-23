@@ -95,3 +95,16 @@ This document records the architectural and technology decisions made for Ralypt
 - **Status**: Accepted
 - **Context**: Sri Lankan restaurant staff and customers speak English, Sinhala, and Tamil.
 - **Decision**: `react-i18next` with modular JSON translation dictionaries (`en.json`, `si.json`, `ta.json`). No hardcoded text strings in UI components.
+
+---
+
+## ADR 010: Apple Minimalist Aesthetic & Strict Black-and-White Palette
+- **Date**: 2026-10-23
+- **Status**: Accepted
+- **Context**: Restaurant staff have minimal IT proficiency and work in high-speed, noisy dining environments. Complex decorations, saturated gradients, and busy layouts cause cognitive fatigue and order-taking errors.
+- **Decision**: Implement an Apple.com-inspired UI:
+  - **Colors**: White (`#ffffff`) and very light grey (`#f5f5f7`) backgrounds, near-black text (`#1d1d1f`), and solid black (`#1d1d1f`) as the primary brand color for action buttons, active indicators, and logos. No red brand colors, no gradients, no neon.
+  - **Status Colors**: Confined strictly to small indicators (pills, dots, icons), never as full-card backgrounds. Status is always presented via color + Lucide icon + text word.
+  - **Surfaces & Shape**: 18px rounded cards, hairline 1px borders, subtle soft shadows, pill-shaped buttons with scale tap feedback (`0.97`).
+  - **Touch Targets**: Standard buttons >= 48px; primary POS actions >= 56px.
+  - **Kitchen Board**: OLED pure black dark mode (`[data-theme="dark"]`).

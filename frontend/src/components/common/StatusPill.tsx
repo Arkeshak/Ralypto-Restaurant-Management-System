@@ -1,78 +1,54 @@
-import React from 'react';
-import { cn } from '../../lib/utils';
+import { CheckCircle2, Clock, Flame, Info, AlertTriangle, type LucideIcon } from 'lucide-react';
+import { cn } from '@/lib/cn';
 
-export type StatusType = 'free' | 'busy' | 'waiting' | 'info';
+const tones = {
+  free: { cls: 'bg-success-soft text-success', Icon: CheckCircle2 },
+  waiting: { cls: 'bg-warning-soft text-warning', Icon: Clock },
+  busy: { cls: 'bg-busy-soft text-busy', Icon: Flame },
+  info: { cls: 'bg-info-soft text-info', Icon: Info },
+  danger: { cls: 'bg-danger-soft text-danger', Icon: AlertTriangle },
+} satisfies Record<string, { cls: string; Icon: LucideIcon }>;
+
+export type Tone = keyof typeof tones;
 
 interface StatusPillProps {
-  status: StatusType | string;
+  tone?: Tone;
+  status?: string;
   label?: string;
   className?: string;
-  dotOnly?: boolean;
 }
 
-export const StatusPill: React.FC<StatusPillProps> = ({
-  status,
-  label,
-  className,
-  dotOnly = false,
-}) => {
-  let normalizedStatus: StatusType = 'info';
+export function StatusPill({ tone, status, label, className }: StatusPillProps) {
+  let resolvedTone: Tone = tone || 'info';
 
-  if (['free', 'available', 'ready', 'completed', 'paid'].includes(status.toLowerCase())) {
-    normalizedStatus = 'free';
-  } else if (['busy', 'occupied', 'problem', 'voided', 'failed', 'canceled'].includes(status.toLowerCase())) {
-    normalizedStatus = 'busy';
-  } else if (['waiting', 'preparing', 'pending', 'new', 'draft'].includes(status.toLowerCase())) {
-    normalizedStatus = 'waiting';
-  } else {
-    normalizedStatus = 'info';
+  if (!tone && status) {
+    const s = status.toLowerCase();
+    if (['free', 'available', 'ready', 'completed', 'paid'].includes(s)) {
+      resolvedTone = 'free';
+    } else if (['busy', 'occupied'].includes(s)) {
+      resolvedTone = 'busy';
+    } else if (['waiting', 'preparing', 'pending', 'new', 'draft', 'bill_requested', 'billed'].includes(s)) {
+      resolvedTone = 'waiting';
+    } else if (['voided', 'danger', 'failed', 'canceled'].includes(s)) {
+      resolvedTone = 'danger';
+    } else {
+      resolvedTone = 'info';
+    }
   }
 
-  const colorStyles: Record<StatusType, { bg: string; text: string; dot: string; border: string }> = {
-    free: {
-      bg: 'bg-emerald-950/50',
-      text: 'text-emerald-400',
-      dot: 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]',
-      border: 'border-emerald-800/50',
-    },
-    busy: {
-      bg: 'bg-red-950/50',
-      text: 'text-red-400',
-      dot: 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]',
-      border: 'border-red-800/50',
-    },
-    waiting: {
-      bg: 'bg-amber-950/50',
-      text: 'text-amber-400',
-      dot: 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]',
-      border: 'border-amber-800/50',
-    },
-    info: {
-      bg: 'bg-sky-950/50',
-      text: 'text-sky-400',
-      dot: 'bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.6)]',
-      border: 'border-sky-800/50',
-    },
-  };
-
-  const style = colorStyles[normalizedStatus];
-
-  if (dotOnly) {
-    return <span className={cn('h-3 w-3 rounded-full inline-block', style.dot, className)} />;
-  }
+  const { cls, Icon } = tones[resolvedTone] || tones.info;
+  const displayLabel = label || status || resolvedTone;
 
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider border',
-        style.bg,
-        style.text,
-        style.border,
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-medium capitalize',
+        cls,
         className
       )}
     >
-      <span className={cn('h-2 w-2 rounded-full inline-block', style.dot)} />
-      {label || status}
+      <Icon className="h-4 w-4" aria-hidden strokeWidth={1.75} />
+      <span>{displayLabel}</span>
     </span>
   );
-};
+}

@@ -1,343 +1,370 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { tablesApi } from '../../api/endpoints/tables';
-import { ordersApi } from '../../api/endpoints/orders';
-import { shiftsApi } from '../../api/endpoints/shifts';
-import { StatusPill } from '../../components/common/StatusPill';
-import { MoneyText } from '../../components/common/MoneyText';
-import { BigButton } from '../../components/common/BigButton';
-import { useUiStore } from '../../stores/ui.store';
-import { useTranslation } from 'react-i18next';
-import {
-  Users,
-  Clock,
-  Printer,
-  CreditCard,
-  Send,
-  XCircle,
-  Coffee,
-  CheckCircle2,
-} from 'lucide-react';
-import type { Table, TableStatus } from '../../api/types';
+import { useState, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
+import { ShoppingBag, ChevronUp, X } from "lucide-react";
+import { CategoryList } from "./CategoryList";
+import { MenuGrid } from "./MenuGrid";
+import { OrderCartPanel, type CartItem } from "./OrderCartPanel";
+import { ModifierSheet } from "./ModifierSheet";
+import { PaymentModal } from "./PaymentModal";
+import { ReceiptModal } from "./ReceiptModal";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { calcTotals } from "./cartMath";
+import { formatMoney } from "@/lib/formatMoney";
+import { MOCK_CATEGORIES, MOCK_MENU_ITEMS } from "@/mocks/data/mockData";
+import type { MenuItem, Modifier } from "@/api/types";
 
-export const PosPage: React.FC = () => {
-  const [filter, setFilter] = useState<string>('all');
-  const [selectedTable, setSelectedTable] = useState<Table | null>(null);
-  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+export function PosPage() {
+  const [searchParams] = useSearchParams();
+  const tableId = searchParams.get("table");
+  const tableNumber = searchParams.get("number") || (tableId ? `T${tableId}` : undefined);
 
-  const queryClient = useQueryClient();
-  const { openManagerPinModal } = useUiStore();
-  const { t } = useTranslation();
+  // Categories & Filtering
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // Queries
-  const { data: tables = [], isLoading: tablesLoading } = useQuery({
-    queryKey: ['tables'],
-    queryFn: tablesApi.getTables,
-  });
-
-  const { data: currentShift } = useQuery({
-    queryKey: ['shift-current'],
-    queryFn: shiftsApi.getCurrentShift,
-  });
-
-  const { data: activeOrder, refetch: refetchOrder } = useQuery({
-    queryKey: ['order', selectedTable?.activeOrderId],
-    queryFn: () => (selectedTable?.activeOrderId ? ordersApi.getOrder(selectedTable.activeOrderId) : null),
-    enabled: !!selectedTable?.activeOrderId,
-  });
-
-  // Mutations
-  const updateTableMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: TableStatus }) =>
-      tablesApi.updateStatus(id, status),
-    onSuccess: (updated) => {
-      queryClient.invalidateQueries({ queryKey: ['tables'] });
-      setSelectedTable(updated);
+  // Cart state
+  const [cartItems, setCartItems] = useState<CartItem[]>([
+    {
+      id: "item-kottu-chick",
+      name: "Chicken Kottu",
+      priceCents: 145000,
+      qty: 1,
+      notes: "Extra chili paste",
     },
-  });
+    {
+      id: "item-starter-hbc",
+      name: "Hot Butter Cuttlefish (HBC)",
+      priceCents: 220000,
+      qty: 1,
+    },
+  ]);
 
-  const handleSendToKitchen = async () => {
-    if (!selectedTable?.activeOrderId) return;
-    try {
-      await ordersApi.sendToKitchen(selectedTable.activeOrderId);
-      refetchOrder();
-      setActionSuccess('Order items successfully sent to Kitchen display!');
-      setTimeout(() => setActionSuccess(null), 3000);
-    } catch (e: any) {
-      alert(e.message || 'Failed to dispatch to kitchen');
+  // Modal states
+  const [selectedItemForModifiers, setSelectedItemForModifiers] = useState<MenuItem | null>(null);
+  const [isModifierOpen, setIsModifierOpen] = useState(false);
+  const [isPayOpen, setIsPayOpen] = useState(false);
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [isVoidPromptOpen, setIsVoidPromptOpen] = useState(false);
+  const [isMobileOrderOpen, setIsMobileOrderOpen] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+
+  // Filtered menu items
+  const filteredItems = useMemo(() => {
+    return MOCK_MENU_ITEMS.filter((item) => {
+      const categoryMatch =
+        selectedCategoryId === "all" || item.categoryId === selectedCategoryId;
+      const searchMatch =
+        !searchQuery ||
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchQuery.toLowerCase());
+      return categoryMatch && searchMatch;
+    });
+  }, [selectedCategoryId, searchQuery]);
+
+  // Cart Calculations with standard 10% tax and 10% service
+  const totals = useMemo(() => {
+    return calcTotals(
+      cartItems.map((i) => ({ priceCents: i.priceCents, qty: i.qty })),
+      { servicePercent: 10, taxPercent: 10 }
+    );
+  }, [cartItems]);
+
+  const handleSelectItem = (item: MenuItem) => {
+    if (item.modifiers && item.modifiers.length > 0) {
+      setSelectedItemForModifiers(item);
+      setIsModifierOpen(true);
+      return;
     }
-  };
 
-  const handleRequestBill = async () => {
-    if (!selectedTable?.activeOrderId) return;
-    try {
-      await ordersApi.requestBill(selectedTable.activeOrderId);
-      updateTableMutation.mutate({ id: selectedTable.id, status: 'billed' });
-      setActionSuccess('Bill printed & table marked as Billed');
-      setTimeout(() => setActionSuccess(null), 3000);
-    } catch (e: any) {
-      alert(e.message || 'Failed to print bill');
-    }
-  };
-
-  const handleSettlePayment = async () => {
-    if (!selectedTable?.activeOrderId) return;
-    try {
-      await ordersApi.pay(selectedTable.activeOrderId, {
-        amountCents: activeOrder?.totalCents || 379500,
-        paymentMethod: 'cash',
-      });
-      updateTableMutation.mutate({ id: selectedTable.id, status: 'available' });
-      setSelectedTable(null);
-      setActionSuccess('Payment settled in full! Table is now available.');
-      setTimeout(() => setActionSuccess(null), 3500);
-    } catch (e: any) {
-      alert(e.message || 'Failed to settle payment');
-    }
-  };
-
-  const handleVoidOrder = () => {
-    if (!selectedTable?.activeOrderId) return;
-    openManagerPinModal(
-      'Void Active Order',
-      `Authorization required to void order for ${selectedTable.number}. Enter your 4-digit Manager PIN.`,
-      async (pin) => {
-        try {
-          await ordersApi.voidOrder(selectedTable.activeOrderId!, {
-            managerPin: pin,
-            reason: 'Customer cancelled floor order',
-          });
-          updateTableMutation.mutate({ id: selectedTable.id, status: 'available' });
-          setSelectedTable(null);
-          setActionSuccess('Order voided successfully by Manager PIN.');
-          setTimeout(() => setActionSuccess(null), 3500);
-        } catch (e: any) {
-          alert(e.message || 'Manager PIN rejected');
-        }
+    // Direct add
+    setCartItems((prev) => {
+      const existing = prev.find((i) => i.id === item.id);
+      if (existing) {
+        return prev.map((i) =>
+          i.id === item.id ? { ...i, qty: i.qty + 1 } : i
+        );
       }
+      return [
+        ...prev,
+        {
+          id: item.id,
+          name: item.name,
+          priceCents: item.priceCents,
+          qty: 1,
+        },
+      ];
+    });
+  };
+
+  const handleConfirmModifiers = (item: MenuItem, mods: Modifier[]) => {
+    const extraPrice = mods.reduce((sum, m) => sum + m.priceDeltaCents, 0);
+    const uniqueId = `${item.id}-${mods.map((m) => m.id).join("-")}`;
+
+    setCartItems((prev) => {
+      const existing = prev.find((i) => i.id === uniqueId);
+      if (existing) {
+        return prev.map((i) =>
+          i.id === uniqueId ? { ...i, qty: i.qty + 1 } : i
+        );
+      }
+      return [
+        ...prev,
+        {
+          id: uniqueId,
+          name: item.name,
+          priceCents: item.priceCents + extraPrice,
+          qty: 1,
+          modifiers: mods,
+        },
+      ];
+    });
+  };
+
+  const handleUpdateQty = (id: string, delta: number) => {
+    setCartItems((prev) =>
+      prev
+        .map((item) => {
+          if (item.id === id) {
+            const newQty = item.qty + delta;
+            return newQty > 0 ? { ...item, qty: newQty } : null;
+          }
+          return item;
+        })
+        .filter(Boolean) as CartItem[]
     );
   };
 
-  const filteredTables = tables.filter((t) => {
-    if (filter === 'all') return true;
-    return t.status.toLowerCase() === filter.toLowerCase();
-  });
+  const handleRemoveItem = (id: string) => {
+    setCartItems((prev) => prev.filter((i) => i.id !== id));
+  };
+
+  const handleUpdateNotes = (id: string, notes: string) => {
+    setCartItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, notes } : i))
+    );
+  };
+
+  const handleSendToKitchen = () => {
+    setIsSending(true);
+    setTimeout(() => {
+      setIsSending(false);
+      toast.success("Order sent to Kitchen");
+      setIsMobileOrderOpen(false);
+    }, 450);
+  };
+
+  const handlePrintBill = () => {
+    setIsReceiptOpen(true);
+  };
+
+  const handleOpenPay = () => {
+    setIsPayOpen(true);
+  };
+
+  const handleConfirmPayment = (method: string) => {
+    setIsPayOpen(false);
+    setIsMobileOrderOpen(false);
+    toast.success(`Payment of ${formatMoney(totals.total)} settled via ${method.toUpperCase()}`);
+    // Clear cart or redirect
+    setCartItems([]);
+  };
+
+  const handleHoldOrder = () => {
+    toast.success("Order held on Table " + (tableNumber || "Direct"));
+  };
+
+  const handleConfirmVoid = (pin?: string) => {
+    if (pin === "1234" || pin === "2222") {
+      setCartItems([]);
+      setIsVoidPromptOpen(false);
+      setIsMobileOrderOpen(false);
+      toast.success("Order voided by Manager");
+    } else {
+      toast.error("Incorrect Manager PIN");
+    }
+  };
+
+  const totalItemCount = cartItems.reduce((sum, i) => sum + i.qty, 0);
 
   return (
-    <div className="space-y-6">
-      {/* Top Banner / Shift Info */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl glass-card border border-zinc-800">
-        <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <span>{t('pos.title')}</span>
-            <span className="text-xs font-normal text-zinc-400">| Dine-In Floor Management</span>
-          </h2>
-          <p className="text-xs text-zinc-400 mt-0.5">
-            Shift Register: Active • Opening Float:{' '}
-            <MoneyText cents={currentShift?.openingFloatCents || 1000000} className="text-xs" />
-          </p>
-        </div>
+    <div className="relative flex h-[calc(100vh-6rem)] w-full overflow-hidden rounded-card border border-border bg-surface shadow-card">
+      {/* Column 1: Categories (Left) - Hidden on phone */}
+      <div className="hidden w-52 shrink-0 border-r border-border overflow-y-auto lg:block">
+        <CategoryList
+          categories={MOCK_CATEGORIES}
+          selectedCategoryId={selectedCategoryId}
+          onSelectCategory={setSelectedCategoryId}
+        />
+      </div>
 
-        {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-zinc-950 border border-zinc-800/80 text-xs overflow-x-auto">
-          {['all', 'available', 'occupied', 'billed'].map((f) => (
+      {/* Column 2: Menu Grid (Centre) */}
+      <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col">
+        {/* On Mobile: Horizontal Category Scroller */}
+        <div className="flex lg:hidden overflow-x-auto gap-2 p-2 border-b border-border/40 scrollbar-none">
+          <button
+            onClick={() => setSelectedCategoryId("all")}
+            className={`rounded-full px-3 py-1 text-xs font-semibold shrink-0 transition-colors ${
+              selectedCategoryId === "all"
+                ? "bg-brand text-surface"
+                : "border border-border bg-surface text-text"
+            }`}
+          >
+            All Items
+          </button>
+          {MOCK_CATEGORIES.map((cat) => (
             <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg font-semibold capitalize transition-all whitespace-nowrap ${
-                filter === f
-                  ? 'bg-zinc-800 text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
+              key={cat.id}
+              onClick={() => setSelectedCategoryId(cat.id)}
+              className={`rounded-full px-3 py-1 text-xs font-semibold shrink-0 transition-colors ${
+                selectedCategoryId === cat.id
+                  ? "bg-brand text-surface"
+                  : "border border-border bg-surface text-text"
               }`}
             >
-              {f === 'all' ? t('common.all') : t(`common.${f === 'available' ? 'free' : f}`)}
+              {cat.name}
             </button>
           ))}
         </div>
+
+        <div className="flex-1 min-h-0">
+          <MenuGrid
+            items={filteredItems}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onSelectItem={handleSelectItem}
+          />
+        </div>
       </div>
 
-      {actionSuccess && (
-        <div className="p-4 rounded-xl bg-emerald-950/80 border border-emerald-800 text-emerald-300 text-sm font-semibold flex items-center gap-2 animate-in fade-in">
-          <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-          <span>{actionSuccess}</span>
-        </div>
-      )}
+      {/* Column 3: Current Order (Right) - Desktop/Tablet */}
+      <div className="hidden w-80 shrink-0 md:block lg:w-96">
+        <OrderCartPanel
+          tableNumber={tableNumber}
+          items={cartItems}
+          totals={totals}
+          onUpdateQty={handleUpdateQty}
+          onRemoveItem={handleRemoveItem}
+          onUpdateNotes={handleUpdateNotes}
+          onSendToKitchen={handleSendToKitchen}
+          onPrintBill={handlePrintBill}
+          onOpenPay={handleOpenPay}
+          onHoldOrder={handleHoldOrder}
+          onVoidOrder={() => setIsVoidPromptOpen(true)}
+          isSending={isSending}
+        />
+      </div>
 
-      {/* Main Grid: Left is Table Map, Right is Active Order Drawer */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Table Map Grid */}
-        <div className="lg:col-span-2 space-y-4">
-          {tablesLoading ? (
-            <div className="p-12 text-center text-zinc-500 font-medium">Loading floor tables...</div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              {filteredTables.map((table) => {
-                const isSelected = selectedTable?.id === table.id;
-                return (
-                  <div
-                    key={table.id}
-                    onClick={() => setSelectedTable(table)}
-                    className={`relative p-5 rounded-2xl cursor-pointer transition-all duration-200 border text-left touch-target ${
-                      isSelected
-                        ? 'border-brand-500 bg-brand-950/20 ring-2 ring-brand-500/50 shadow-xl'
-                        : 'border-zinc-800/80 bg-zinc-900/60 hover:bg-zinc-800/70 hover:border-zinc-700'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <span className="text-xl font-bold tracking-tight text-white">
-                        {table.number}
-                      </span>
-                      <StatusPill status={table.status} />
-                    </div>
-
-                    <p className="text-xs text-zinc-400 mb-3">{table.areaName}</p>
-
-                    <div className="flex items-center justify-between pt-3 border-t border-zinc-800/60 text-xs">
-                      <span className="flex items-center gap-1 text-zinc-400 font-medium">
-                        <Users className="w-3.5 h-3.5" />
-                        {table.capacity} Seats
-                      </span>
-                      {table.activeOrderTotalCents ? (
-                        <MoneyText cents={table.activeOrderTotalCents} className="text-sm text-brand-400" />
-                      ) : (
-                        <span className="text-emerald-400 font-semibold text-[11px]">Free</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+      {/* Phone: Sticky Bottom "View Order" Bar */}
+      <div className="fixed inset-x-0 bottom-16 z-30 p-3 md:hidden">
+        {cartItems.length > 0 && (
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setIsMobileOrderOpen(true)}
+            className="w-full flex h-14 items-center justify-between rounded-full bg-brand px-5 text-surface shadow-2xl"
+          >
+            <div className="flex items-center gap-2 font-semibold">
+              <ShoppingBag className="h-5 w-5" />
+              <span>
+                View Order ({totalItemCount} {totalItemCount === 1 ? "item" : "items"})
+              </span>
             </div>
-          )}
-        </div>
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold tabular-nums">{formatMoney(totals.total)}</span>
+              <ChevronUp className="h-5 w-5" />
+            </div>
+          </motion.button>
+        )}
+      </div>
 
-        {/* Selected Table Order Detail Panel */}
-        <div className="rounded-2xl glass-panel border border-zinc-800 p-5 flex flex-col justify-between min-h-[460px]">
-          {selectedTable ? (
-            <div className="space-y-4 flex-1 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
-                  <div>
-                    <h3 className="text-xl font-bold text-white">{selectedTable.number}</h3>
-                    <p className="text-xs text-zinc-400">{selectedTable.areaName}</p>
-                  </div>
-                  <StatusPill status={selectedTable.status} />
-                </div>
-
-                {activeOrder ? (
-                  <div className="mt-4 space-y-3">
-                    <div className="flex items-center justify-between text-xs text-zinc-400">
-                      <span>Order #{activeOrder.orderNumber}</span>
-                      <span className="flex items-center gap-1 font-mono">
-                        <Clock className="w-3 h-3" /> 15m ago
-                      </span>
-                    </div>
-
-                    {/* Ordered Items List */}
-                    <div className="space-y-2 mt-2 max-h-48 overflow-y-auto pr-1">
-                      {activeOrder.items.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800 text-xs"
-                        >
-                          <div>
-                            <p className="font-bold text-zinc-200">
-                              {item.quantity}x {item.name}
-                            </p>
-                            {item.notes && <p className="text-[11px] text-zinc-400 italic">{item.notes}</p>}
-                          </div>
-                          <MoneyText cents={item.subtotalCents} className="text-xs" />
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Bill Totals Calculation */}
-                    <div className="mt-4 pt-3 border-t border-zinc-800 space-y-1.5 text-xs">
-                      <div className="flex justify-between text-zinc-400">
-                        <span>{t('common.subtotal')}</span>
-                        <MoneyText cents={activeOrder.subtotalCents} showCurrency={false} />
-                      </div>
-                      <div className="flex justify-between text-zinc-400">
-                        <span>{t('common.serviceCharge')}</span>
-                        <MoneyText cents={activeOrder.serviceChargeCents} showCurrency={false} />
-                      </div>
-                      <div className="flex justify-between text-base font-bold text-white pt-2 border-t border-zinc-800">
-                        <span>{t('common.total')}</span>
-                        <MoneyText cents={activeOrder.totalCents} className="text-lg text-brand-400" />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="py-12 text-center text-zinc-400 text-sm">
-                    <Coffee className="w-8 h-8 mx-auto text-zinc-600 mb-2" />
-                    <p className="font-semibold text-zinc-300">Table is currently empty</p>
-                    <p className="text-xs text-zinc-500 mt-1">Tap below to seat guests & open ticket</p>
-                    <div className="mt-4">
-                      <BigButton
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => updateTableMutation.mutate({ id: selectedTable.id, status: 'occupied' })}
-                      >
-                        Seat Guests
-                      </BigButton>
-                    </div>
-                  </div>
-                )}
+      {/* Phone: Order Bottom Sheet Drawer */}
+      <AnimatePresence>
+        {isMobileOrderOpen && (
+          <div className="fixed inset-0 z-50 flex items-end bg-black/50 backdrop-blur-sm md:hidden">
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
+              className="w-full h-[90vh] rounded-t-3xl border-t border-border bg-surface flex flex-col overflow-hidden"
+            >
+              <div className="flex items-center justify-between p-3 border-b border-border/40">
+                <span className="font-bold text-text">Order Items</span>
+                <button
+                  onClick={() => setIsMobileOrderOpen(false)}
+                  className="p-1 rounded-full text-muted hover:text-text"
+                >
+                  <X className="h-6 w-6" />
+                </button>
               </div>
 
-              {/* POS Action Buttons */}
-              {activeOrder && (
-                <div className="space-y-2 pt-4 border-t border-zinc-800">
-                  <div className="grid grid-cols-2 gap-2">
-                    <BigButton
-                      variant="brand"
-                      size="touch"
-                      onClick={handleSendToKitchen}
-                      icon={<Send className="w-4 h-4" />}
-                    >
-                      {t('pos.sendToKitchen')}
-                    </BigButton>
+              <div className="flex-1 min-h-0">
+                <OrderCartPanel
+                  tableNumber={tableNumber}
+                  items={cartItems}
+                  totals={totals}
+                  onUpdateQty={handleUpdateQty}
+                  onRemoveItem={handleRemoveItem}
+                  onUpdateNotes={handleUpdateNotes}
+                  onSendToKitchen={handleSendToKitchen}
+                  onPrintBill={handlePrintBill}
+                  onOpenPay={handleOpenPay}
+                  onHoldOrder={handleHoldOrder}
+                  onVoidOrder={() => setIsVoidPromptOpen(true)}
+                  isSending={isSending}
+                />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
-                    <BigButton
-                      variant="secondary"
-                      size="touch"
-                      onClick={handleRequestBill}
-                      icon={<Printer className="w-4 h-4" />}
-                    >
-                      {t('pos.requestBill')}
-                    </BigButton>
-                  </div>
+      {/* Modifiers Sheet */}
+      <ModifierSheet
+        item={selectedItemForModifiers}
+        isOpen={isModifierOpen}
+        onClose={() => {
+          setIsModifierOpen(false);
+          setSelectedItemForModifiers(null);
+        }}
+        onConfirm={handleConfirmModifiers}
+      />
 
-                  <BigButton
-                    variant="success"
-                    size="touch-lg"
-                    fullWidth
-                    onClick={handleSettlePayment}
-                    icon={<CreditCard className="w-5 h-5" />}
-                  >
-                    {t('pos.settlePayment')} (LKR)
-                  </BigButton>
+      {/* Payment Settlement Modal */}
+      <PaymentModal
+        isOpen={isPayOpen}
+        totalCents={totals.total}
+        onClose={() => setIsPayOpen(false)}
+        onConfirmPayment={handleConfirmPayment}
+      />
 
-                  <button
-                    onClick={handleVoidOrder}
-                    className="w-full text-center text-xs font-semibold text-red-400 hover:text-red-300 py-1 transition-colors flex items-center justify-center gap-1"
-                  >
-                    <XCircle className="w-3.5 h-3.5" />
-                    <span>{t('pos.voidOrder')} (Requires Manager PIN)</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center p-8 text-zinc-500">
-              <Users className="w-12 h-12 mb-3 text-zinc-700" />
-              <h4 className="text-base font-bold text-zinc-300 mb-1">{t('pos.noActiveOrder')}</h4>
-              <p className="text-xs text-zinc-500 max-w-xs leading-relaxed">
-                Tap any table on the floor map to review active orders, dispatch to kitchen, or print receipt.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* 80mm Receipt Preview Modal */}
+      <ReceiptModal
+        isOpen={isReceiptOpen}
+        orderNumber="ORD-882"
+        tableNumber={tableNumber}
+        items={cartItems.map((i) => ({
+          ...i,
+          modifiers: i.modifiers?.map((m) => m.name),
+        }))}
+        totals={totals}
+        onClose={() => setIsReceiptOpen(false)}
+        onPrint={() => toast.success("Bill sent to 80mm thermal printer")}
+      />
+
+      {/* Void Manager PIN Modal */}
+      <ConfirmDialog
+        isOpen={isVoidPromptOpen}
+        title="Void Current Order"
+        description="Canceling an active order requires manager authorization."
+        confirmLabel="Void Order"
+        isDestructive={true}
+        requiresPin={true}
+        onConfirm={handleConfirmVoid}
+        onCancel={() => setIsVoidPromptOpen(false)}
+      />
     </div>
   );
-};
+}
+export default PosPage;

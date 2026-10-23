@@ -1,72 +1,62 @@
+@import "@fontsource-variable/inter";
+
 :root {
-  --background: 240 10% 3.9%;
-  --foreground: 0 0% 98%;
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --border: #d2d2d7;
+  --text: #1d1d1f;
+  --text-muted: #6e6e73;
 
-  --card: 240 10% 4.9%;
-  --card-foreground: 0 0% 98%;
+  /* "brand" is black, like apple.com */
+  --brand: #1d1d1f;
+  --brand-hover: #000000;
+  --brand-soft: #efeff1;
 
-  --popover: 240 10% 4.9%;
-  --popover-foreground: 0 0% 98%;
+  /* Status colours: small things only (pills, dots, icons) */
+  --success: #248a3d;
+  --success-soft: #e9f6ec;
+  --warning: #b25000;
+  --warning-soft: #fff4e5;
+  --busy: #c93400;
+  --busy-soft: #fdeee6;
+  --info: #0071e3;
+  --info-soft: #e8f2fd;
+  --danger: #d70015;
+  --danger-soft: #fdebed;
 
-  --primary: 0 72% 51%; /* Crimson Brand Red #dc2626 */
-  --primary-foreground: 0 0% 100%;
-
-  --secondary: 240 3.7% 15.9%;
-  --secondary-foreground: 0 0% 98%;
-
-  --muted: 240 3.7% 15.9%;
-  --muted-foreground: 240 5% 64.9%;
-
-  --accent: 240 3.7% 15.9%;
-  --accent-foreground: 0 0% 98%;
-
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 0 0% 98%;
-
-  --border: 240 3.7% 15.9%;
-  --input: 240 3.7% 15.9%;
-  --ring: 0 72% 51%;
-
-  --radius: 0.75rem;
-
-  /* Semantic Restaurant Statuses */
-  --status-free: 142 76% 36%;     /* Emerald */
-  --status-busy: 0 84% 60%;      /* Red */
-  --status-waiting: 38 92% 50%;   /* Amber */
-  --status-info: 199 89% 48%;     /* Sky Blue */
-
-  /* Touch Ergonomic Rules */
-  --touch-min-height: 48px;
-  --touch-button-height: 56px;
-  --touch-font-base: 16px;
+  --radius-card: 18px;
+  --radius-btn: 12px;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
-.light {
-  --background: 0 0% 100%;
-  --foreground: 240 10% 3.9%;
+[data-theme="dark"] {
+  --bg: #000000;
+  --surface: #1c1c1e;
+  --border: #38383a;
+  --text: #f5f5f7;
+  --text-muted: #98989d;
+  --brand: #f5f5f7;
+  --brand-hover: #ffffff;
+  --brand-soft: #2c2c2e;
+  --success-soft: #12301c;
+  --warning-soft: #3a2a10;
+  --busy-soft: #3a2014;
+  --info-soft: #11283f;
+  --danger-soft: #3a1418;
+}
 
-  --card: 0 0% 100%;
-  --card-foreground: 240 10% 3.9%;
-
-  --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 3.9%;
-
-  --primary: 0 72% 51%;
-  --primary-foreground: 0 0% 100%;
-
-  --secondary: 240 4.8% 95.9%;
-  --secondary-foreground: 240 5.9% 10%;
-
-  --muted: 240 4.8% 95.9%;
-  --muted-foreground: 240 3.8% 46.1%;
-
-  --accent: 240 4.8% 95.9%;
-  --accent-foreground: 240 5.9% 10%;
-
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 0 0% 98%;
-
-  --border: 240 5.9% 90%;
-  --input: 240 5.9% 90%;
-  --ring: 0 72% 51%;
+html, body, #root { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter Variable", system-ui, sans-serif;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
+*:focus-visible { outline: 3px solid var(--info); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }

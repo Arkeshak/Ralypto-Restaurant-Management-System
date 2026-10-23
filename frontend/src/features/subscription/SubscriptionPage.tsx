@@ -1,19 +1,14 @@
-import React from 'react';
-import { useAuth } from '../../hooks/useAuth';
-import { useQuery } from '@tanstack/react-query';
-import { subscriptionApi } from '../../api/endpoints/subscription';
-import { MoneyText } from '../../components/common/MoneyText';
-import { BigButton } from '../../components/common/BigButton';
-import { CreditCard, Check, FileText } from 'lucide-react';
-import type { PlanCode } from '../../api/types';
+import { useAuth } from "@/hooks/useAuth";
+import { PageHeader } from "@/components/common/PageHeader";
+import { BigButton } from "@/components/common/BigButton";
+import { formatMoney } from "@/lib/formatMoney";
+import { Check, Download, FileText, MessageCircle } from "lucide-react";
+import { toast } from "sonner";
+import type { PlanCode } from "@/api/types";
 
-export const SubscriptionPage: React.FC = () => {
+export function SubscriptionPage() {
   const { plan, setMockPlan } = useAuth();
-
-  const { data: invoices = [] } = useQuery({
-    queryKey: ['subscription-invoices'],
-    queryFn: subscriptionApi.getInvoices,
-  });
+  const currentCode = plan?.code || "standard";
 
   const tiers: Array<{
     code: PlanCode;
@@ -24,173 +19,205 @@ export const SubscriptionPage: React.FC = () => {
     isPopular?: boolean;
   }> = [
     {
-      code: 'basic',
-      name: 'Basic Plan',
+      code: "basic",
+      name: "Basic Plan",
       priceCents: 1250000,
-      description: 'Essential POS billing & kitchen display for small eateries',
+      description: "Essential POS billing & kitchen display for small cafés",
       features: [
-        'POS Billing & Shifts',
-        'Kitchen Display System (KDS)',
-        'View-Only Digital QR Menu',
-        'Up to 3 staff users',
-        '10 Core Analytical Reports',
+        "POS Billing & Cashier Shifts",
+        "Kitchen Display System (KDS)",
+        "Digital QR Menu (View-only)",
+        "Up to 3 staff accounts",
+        "Standard Daily Reports",
       ],
     },
     {
-      code: 'standard',
-      name: 'Standard Plan',
+      code: "standard",
+      name: "Standard Plan",
       priceCents: 2450000,
-      description: 'Complete floor automation, waiter app & inventory costing',
+      description: "Floor operations, mobile waiter app & food cost control",
       features: [
-        'All Basic Features',
-        'Waiter Mobile App (PIN login)',
-        'Customer QR Self-Ordering & Waiter Call',
-        'Inventory, GRN & Recipe Depletion',
-        'Delivery Orders (Uber Eats / PickMe)',
-        '35+ Analytical Reports',
-        'Up to 10 staff users',
-        'Basic AI Low-Stock Alerts',
+        "All Basic Features",
+        "Waiter Mobile Ordering App",
+        "Customer QR Self-Ordering & Waiter Call",
+        "Inventory & Recipe Depletion",
+        "Delivery Integration (Uber Eats & PickMe)",
+        "Up to 10 staff accounts",
+        "35+ Deep Analytical Reports",
       ],
       isPopular: true,
     },
     {
-      code: 'premium',
-      name: 'Premium Plan',
+      code: "premium",
+      name: "Premium Plan",
       priceCents: 4800000,
-      description: 'Enterprise ERP with Accounting, Payroll & Full AI Suite',
+      description: "Full enterprise hospitality suite with AI and Accounting",
       features: [
-        'All Standard Features',
-        'Double-Entry Accounting & P&L',
-        'Staff HR, Attendance & Payroll',
-        'Multi-Branch Management',
-        'Unlimited staff users',
-        'All AI Features (Chat Assistant, Demand Forecasting, Photo Menu Digitizer)',
-        '24/7 Priority Support (WhatsApp & Phone)',
+        "All Standard Features",
+        "Double-Entry Accounting & Payroll",
+        "Multi-Branch Operations",
+        "Unlimited staff users",
+        "Gemini AI Hospitality Advisor",
+        "AI Demand & Stock Prediction",
+        "24/7 Priority WhatsApp Support",
       ],
     },
   ];
 
+  const invoices = [
+    { id: "INV-2026-10", date: "Oct 01, 2026", amountCents: 2450000, status: "Paid" },
+    { id: "INV-2026-09", date: "Sep 01, 2026", amountCents: 2450000, status: "Paid" },
+    { id: "INV-2026-08", date: "Aug 01, 2026", amountCents: 2450000, status: "Paid" },
+  ];
+
+  const handleSelectPlan = (code: PlanCode) => {
+    if (code === currentCode) return;
+    setMockPlan(code);
+    toast.success(`Switched restaurant plan to ${code.toUpperCase()}`);
+  };
+
+  const handleWhatsApp = () => {
+    const text = encodeURIComponent("Hi Ralypto sales, I would like to inquire about plan upgrade and payment options.");
+    window.open(`https://wa.me/94770000000?text=${text}`, "_blank");
+  };
+
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="p-6 rounded-3xl glass-card border border-zinc-800">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-3 rounded-2xl bg-brand-950/80 text-brand-500 border border-brand-800/60">
-            <CreditCard className="w-6 h-6" />
+    <div className="mx-auto max-w-6xl space-y-8">
+      <PageHeader
+        title="My Plan & Subscription"
+        description="View your active tier, renew date, past invoices, or upgrade to unlock features."
+      />
+
+      {/* Current Plan Overview Card */}
+      <div className="rounded-card border border-border bg-surface p-6 shadow-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+        <div>
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+            Current Subscription
+          </span>
+          <div className="mt-1 flex items-baseline gap-3">
+            <h2 className="text-2xl font-bold tracking-tight text-text">
+              {plan?.name || "Standard Plan"}
+            </h2>
+            <span className="rounded-full bg-success-soft px-3 py-0.5 text-xs font-bold text-success">
+              Active
+            </span>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Subscription & Plan Management</h1>
-            <p className="text-sm text-zinc-400">
-              Manage your monthly SaaS tier, unlock premium modules, and inspect billing invoices
-            </p>
-          </div>
+          <p className="mt-1 text-sm text-muted">
+            Next renewal on <b>November 15, 2026</b> · {formatMoney(plan?.monthlyPriceCents || 2450000)} / month
+          </p>
         </div>
+
+        <BigButton
+          label="Contact Sales on WhatsApp"
+          icon={MessageCircle}
+          variant="secondary"
+          size="md"
+          onClick={handleWhatsApp}
+        />
       </div>
 
-      {/* Plan Tiers Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {tiers.map((t) => {
-          const isCurrent = (plan?.code || 'standard') === t.code;
+      {/* Plan Comparison Cards */}
+      <div className="space-y-4">
+        <h3 className="text-xl font-semibold tracking-[-0.02em] text-text">Available Subscription Tiers</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {tiers.map((t) => {
+            const isCurrent = currentCode === t.code;
 
-          return (
-            <div
-              key={t.code}
-              className={`relative flex flex-col justify-between p-6 rounded-3xl transition-all duration-300 border ${
-                isCurrent
-                  ? 'border-brand-500 bg-brand-950/20 ring-2 ring-brand-500/50 shadow-2xl'
-                  : 'border-zinc-800 bg-zinc-900/60 hover:bg-zinc-900'
-              }`}
-            >
-              <div>
+            return (
+              <div
+                key={t.code}
+                className={`relative flex flex-col justify-between rounded-card border bg-surface p-6 shadow-card transition-all ${
+                  isCurrent
+                    ? "border-brand ring-2 ring-brand/10"
+                    : "border-border hover:border-brand/40"
+                }`}
+              >
                 {t.isPopular && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-brand-600 text-white text-[11px] font-extrabold uppercase tracking-wider shadow-lg">
+                  <span className="absolute -top-3 left-6 rounded-full bg-brand px-3 py-0.5 text-xs font-bold text-surface shadow-sm">
                     Most Popular
                   </span>
                 )}
 
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-xl font-bold text-white">{t.name}</h3>
-                    <p className="text-xs text-zinc-400 mt-1">{t.description}</p>
+                <div>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xl font-bold text-text">{t.name}</h4>
+                    {isCurrent && (
+                      <span className="text-xs font-bold text-brand bg-brand-soft px-2.5 py-0.5 rounded-full">
+                        Current
+                      </span>
+                    )}
                   </div>
-                  {isCurrent && (
-                    <span className="px-2.5 py-1 rounded-full bg-brand-950 text-brand-400 border border-brand-800 text-[10px] font-bold uppercase tracking-wider">
-                      Active
+                  <p className="mt-1 text-xs text-muted min-h-8">{t.description}</p>
+
+                  <div className="mt-4 pb-4 border-b border-border/40">
+                    <span className="text-3xl font-extrabold tabular-nums text-text">
+                      {formatMoney(t.priceCents)}
                     </span>
-                  )}
+                    <span className="text-xs text-muted font-medium"> / month</span>
+                  </div>
+
+                  {/* Features list */}
+                  <div className="py-4 space-y-2.5">
+                    {t.features.map((feat) => (
+                      <div key={feat} className="flex items-start gap-2.5 text-xs text-text">
+                        <Check className="h-4 w-4 text-success shrink-0 mt-0.5" />
+                        <span>{feat}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="mb-6">
-                  <MoneyText cents={t.priceCents} className="text-3xl text-white" />
-                  <span className="text-xs text-zinc-400 font-medium ml-1.5">/ month</span>
+                <div className="pt-4 border-t border-border/40">
+                  <BigButton
+                    label={isCurrent ? "Current Plan" : `Switch to ${t.name}`}
+                    variant={isCurrent ? "secondary" : "primary"}
+                    full
+                    disabled={isCurrent}
+                    onClick={() => handleSelectPlan(t.code)}
+                  />
                 </div>
-
-                <ul className="space-y-3 mb-8 text-xs text-zinc-300">
-                  {t.features.map((feat, idx) => (
-                    <li key={idx} className="flex items-start gap-2.5">
-                      <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                      <span>{feat}</span>
-                    </li>
-                  ))}
-                </ul>
               </div>
-
-              <BigButton
-                variant={isCurrent ? 'outline' : 'brand'}
-                size="touch"
-                fullWidth
-                disabled={isCurrent}
-                onClick={() => setMockPlan(t.code)}
-              >
-                {isCurrent ? 'Current Plan' : `Switch to ${t.name}`}
-              </BigButton>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
-      {/* Invoices History */}
-      <div className="p-6 rounded-2xl glass-panel border border-zinc-800">
-        <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-          <FileText className="w-4 h-4 text-zinc-400" />
-          <span>Billing Invoices</span>
-        </h3>
+      {/* Invoices List */}
+      <div className="rounded-card border border-border bg-surface p-6 shadow-card">
+        <h3 className="text-lg font-semibold text-text mb-1">Billing Invoices</h3>
+        <p className="text-xs text-muted mb-4">Past monthly tax receipts</p>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-zinc-800 text-zinc-400 uppercase tracking-wider">
-                <th className="pb-3">Invoice #</th>
-                <th className="pb-3">Due Date</th>
-                <th className="pb-3">Amount</th>
-                <th className="pb-3">Status</th>
-                <th className="pb-3 text-right">Receipt</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-800/60">
-              {invoices.map((inv) => (
-                <tr key={inv.id} className="text-zinc-200">
-                  <td className="py-3 font-mono font-bold text-white">{inv.invoiceNumber}</td>
-                  <td className="py-3 text-zinc-400">{inv.dueDate}</td>
-                  <td className="py-3">
-                    <MoneyText cents={inv.amountCents} className="text-xs" />
-                  </td>
-                  <td className="py-3">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-950 text-emerald-400 border border-emerald-800">
-                      {inv.status}
-                    </span>
-                  </td>
-                  <td className="py-3 text-right">
-                    <button className="text-brand-400 hover:text-brand-300 font-semibold">
-                      Download PDF
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="divide-y divide-border/60">
+          {invoices.map((inv) => (
+            <div key={inv.id} className="py-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <FileText className="h-5 w-5 text-muted" />
+                <div>
+                  <h4 className="text-sm font-semibold text-text">{inv.id}</h4>
+                  <span className="text-xs text-muted">{inv.date}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-bold tabular-nums text-text">
+                  {formatMoney(inv.amountCents)}
+                </span>
+                <span className="rounded-full bg-success-soft px-2.5 py-0.5 text-xs font-semibold text-success">
+                  {inv.status}
+                </span>
+                <button
+                  onClick={() => toast.success(`Downloading PDF for invoice ${inv.id}`)}
+                  title="Download receipt"
+                  className="p-1.5 rounded-full hover:bg-bg text-muted hover:text-text"
+                >
+                  <Download className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
-};
+}
+export default SubscriptionPage;
