@@ -108,3 +108,75 @@ This document records the architectural and technology decisions made for Ralypt
   - **Surfaces & Shape**: 18px rounded cards, hairline 1px borders, subtle soft shadows, pill-shaped buttons with scale tap feedback (`0.97`).
   - **Touch Targets**: Standard buttons >= 48px; primary POS actions >= 56px.
   - **Kitchen Board**: OLED pure black dark mode (`[data-theme="dark"]`).
+
+---
+
+## ADR 011: Restaurant-Centric Plan Architecture
+- **Date**: 2026-10-23
+- **Status**: Accepted
+- **Context**: In Phase 1 mock fixtures, different demo users belonged to different subscription plans, creating unrealistic bugs.
+- **Decision**: In real restaurant operations, a subscription plan belongs to the `Restaurant` entity, not to individual user accounts. All staff members of a restaurant share the restaurant's subscription tier.
+- **Consequences**:
+  - The dev mock switcher updates the restaurant's plan, dynamically updating permissions for all users uniformly.
+  - In production builds (`VITE_USE_MOCKS=false`), the plan and feature flags are strictly loaded from `GET /auth/me`.
+
+---
+
+## ADR 012: Code Splitting and Bundle Budgeting
+- **Date**: 2026-10-23
+- **Status**: Accepted
+- **Context**: Low-cost Android/iPad dining tablets on slow restaurant Wi-Fi cannot load large initial bundles. Phase 1 initial chunk exceeded 989 kB due to Lucide barrel imports and eager Recharts loading.
+- **Decision**:
+  - Replaced barrel icon imports with explicit named imports.
+  - Isolated Recharts into dynamic `vendor-recharts` chunk loaded strictly on `/reports` and `/dashboard`.
+  - Lazy-loaded Sinhala and Tamil translation dictionaries (`si.json`, `ta.json`).
+  - Configured Vite `manualChunks` for React, Router, Motion, Dexie, and TanStack Query.
+- **Consequences**:
+  - Initial `index.js` chunk reduced from 989 kB to **118.5 kB (35.5 kB gzip)** — well under the 300 kB budget.
+
+---
+
+## ADR 013: Offline Idempotent Sync Queue with Exponential Backoff
+- **Date**: 2026-10-23
+- **Status**: Accepted
+- **Context**: Network drops during dinner rush must never drop tickets or create duplicate charges on reconnect.
+- **Decision**:
+  - Queued orders generate a client-side UUID (`crypto.randomUUID()`) prior to IndexedDB write.
+  - On network reconnect (`window.addEventListener('online')`), orders are replayed with backoff (5s, 15s, 60s).
+  - Orders are only deleted from IndexedDB after HTTP 200/201 confirmation from the server.
+  - An interactive "Sync Problems" inspector in Settings allows cashiers to view and manually retry any stalled orders.
+
+---
+
+## ADR 014: Single-Flight Token Refresh Queue
+- **Date**: 2026-10-23
+- **Status**: Accepted
+- **Context**: When a JWT token expires, multiple concurrent UI queries (tables, kitchen, cart) could simultaneously fire refresh calls, causing race conditions or invalid refresh tokens.
+- **Decision**: Implemented single-flight refresh queueing in `src/api/client.ts`. If a 401 is received, subsequent requests wait for the active refresh promise to settle. If refresh fails, storage is wiped and the user is redirected to `/pin-login` cleanly.
+
+---
+
+## ADR 015: Standard WebSocket Envelope and Fallback Polling
+- **Date**: 2026-10-23
+- **Status**: Accepted
+- **Context**: WebSocket disconnects or network proxies could silently blind kitchen staff from incoming orders.
+- **Decision**:
+  - All real-time events use a unified envelope: `{ event: string, timestamp: string, payload: any }`.
+  - If the socket connection drops, the frontend automatically falls back to HTTP polling every 10 seconds for kitchen tickets and table status, displaying a subtle "Live updates paused" notice in the top bar.
+
+---
+
+## ADR 016: Universal Subscription State Read-Only Hook
+- **Date**: 2026-10-23
+- **Status**: Accepted
+- **Context**: When a subscription enters "Grace Period" or "Read-Only" mode (due to lapsed payment), mutation buttons must be locked across all 15+ screens without scattering ad-hoc condition checks.
+- **Decision**: Implemented `useReadOnly()` hook and `<SubscriptionBanner />`. When `status === 'read_only'`, mutation buttons (create, update, delete, pay) are disabled globally, while reading, reporting, and 80mm thermal receipt printing remain 100% operational.
+
+---
+
+## ADR 017: Virtualized Reporting Framework
+- **Date**: 2026-10-23
+- **Status**: Accepted
+- **Context**: High-volume restaurants generate thousands of item transactions daily. Rendering massive table DOM nodes causes mobile tablet crashes.
+- **Decision**: Built a reusable `ReportTable` component utilizing `@tanstack/react-virtual`. It powers all 12 core reports, supports 10,000+ rows with flat memory overhead, and provides built-in CSV export and 80mm/A4 print styling.
+

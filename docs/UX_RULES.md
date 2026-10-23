@@ -7,11 +7,12 @@ In a busy, fast-paced restaurant environment with grease on fingers, bright kitc
 ## 1. Touch Target & Typography Ergonomics
 
 1. **Touch Targets (Min 48px)**:
-   - All interactive touch targets (buttons, table cards, menu cards, keypad numbers) must be at least **48px x 48px** (preferably 56px–64px for primary actions).
+   - All interactive touch targets (buttons, table cards, menu cards, keypad numbers) must be at least **48px x 48px** (preferably **56px–64px** for primary actions).
    - Touch padding between adjacent buttons must be at least **8px** to prevent accidental mis-taps.
 2. **High-Legibility POS Typography**:
    - Base font size on POS and Kitchen screens must be **at least 16px** (`text-base`).
    - Prices, table numbers, and order totals must use large bold typography (**18px to 28px**).
+   - Sinhala and Tamil scripts must use `@fontsource/noto-sans-sinhala` and `@fontsource/noto-sans-tamil` for clean rendering without vertical clipping.
 3. **Icons MUST Have Visible Text Labels**:
    - Never render an isolated icon without an accompanying text label.
    - Example: `<SendIcon /> Send to Kitchen` (NOT just an airplane or arrow icon).
@@ -24,9 +25,9 @@ In a busy, fast-paced restaurant environment with grease on fingers, bright kitc
 The design aesthetic is inspired directly by **apple.com**: calm, clean, quiet, and premium with generous whitespace.
 
 - **Brand & Base Colours**:
-  - Background: Light grey (`#f5f5f7`)
-  - Surfaces: Pure white (`#ffffff`) cards with 18px radius and 1px hairline border (`#d2d2d7`)
-  - Typography: Near-black text (`#1d1d1f`), secondary muted text (`#6e6e73`)
+  - Background: Light grey (`#f5f5f7`) in light mode; pure deep charcoal/black in dark mode.
+  - Surfaces: Pure white (`#ffffff`) cards with 18px radius and 1px hairline border (`#d2d2d7`).
+  - Typography: Near-black text (`#1d1d1f`), secondary muted text (`#6e6e73`).
   - **Black is the brand colour**: Primary action buttons, active navigation indicator, and brand mark are solid black (`#1d1d1f` / `#000000`).
   - **No brand red, no gradients, no neon accents, no colored card backgrounds**.
   - Blue (`#0071e3`) is reserved strictly for links and accessibility keyboard focus rings.
@@ -46,18 +47,26 @@ The design aesthetic is inspired directly by **apple.com**: calm, clean, quiet, 
 
 ## 3. High-Speed Operational Workflow Rules
 
-1. **Max 3 Taps for Daily Floor Actions**:
+1. **One Primary Button Per Screen**:
+   - Every screen has at most ONE solid black primary action button. Secondary actions are outlined or subtle text buttons.
+2. **Four Mandatory UI States**:
+   Every data-driven view must implement:
+   - **Loading State**: Subtle animated skeleton (`Skeleton.tsx`), no spinner jumps.
+   - **Empty State**: Clear icon + encouraging headline + call to action button.
+   - **Error State**: Plain language explanation + "Try Again" button.
+   - **Normal State**: High-contrast, beautifully formatted data.
+3. **Max 3 Taps for Daily Floor Actions**:
    - *Example: Adding an item to table order*:
      1. Tap Table -> 2. Tap Menu Item -> 3. Tap "Send to Kitchen". (Done in 3 seconds).
    - *Example: Quick Cash Settlement*:
      1. Tap "Pay" -> 2. Tap "Exact Cash" -> 3. Receipt Prints automatically.
-2. **Simple, Action-Oriented Language**:
-   - Use straightforward language that frontline staff understand instantly.
+4. **Simple, Action-Oriented Language**:
+   - Use straightforward words that frontline staff understand instantly.
    - Use: **"Send to Kitchen"** (NOT "Dispatch KOT")
    - Use: **"Print Bill"** (NOT "Generate Invoice")
    - Use: **"Split Bill"** (NOT "Partition Ledger")
    - Use: **"Table Available"** (NOT "Vacant Entity")
-3. **Confirmations: Only for Dangerous Actions**:
+5. **Confirmations: Only for Dangerous Actions**:
    - Do NOT interrupt routine workflows with "Are you sure?" dialogs.
    - Confirmation modals (with Manager PIN prompt) are reserved exclusively for:
      - Voiding an entire order.
@@ -67,28 +76,12 @@ The design aesthetic is inspired directly by **apple.com**: calm, clean, quiet, 
 
 ---
 
-## 4. Role-Specific UX Adaptations
+## 4. Dark Mode & Hardware Layouts
 
-- **POS (Cashier)**:
-  - 10-inch to 15-inch landscape tablet/desktop view.
-  - Left panel: Table map or Menu grid. Right panel: Sticky active order cart with instant numeric keypad for quantities.
-- **Waiter App**:
-  - 100% single-hand mobile friendly (portrait).
-  - Bottom navigation bar with oversized thumb-accessible action bar ("Send Order").
-  - Rapid 4-digit PIN lock screen on device idle.
+- **Theme Toggle**:
+  - The top navigation bar provides **Auto** (system default), **Light**, and **Dark** modes.
+  - The choice is saved in `localStorage` (`ralypto_theme`).
 - **Kitchen Display (KDS)**:
-  - High-contrast dark mode to reduce glare in warm kitchen environments.
-  - Large tickets with elapsed timer counters (`04:32`).
-  - Single tap on ticket switches state (`New` -> `Preparing` -> `Ready`).
-- **Customer QR Menu**:
-  - Zero login / zero friction.
-  - Clean card carousel with vibrant food photography, spice indicators, and one-tap waiter call button.
-
----
-
-## 5. First-Time Walkthrough & Demo Mode
-
-1. **First-Time Guided Tour**:
-   - New restaurant accounts have an onboarding checklist progress bar (e.g. "Step 1: Set up tables", "Step 2: Add 5 menu items", "Step 3: Ring first demo order").
-2. **Interactive Demo Mode**:
-   - A toggle in the navigation bar lets evaluators load realistic pre-seeded restaurant data (Colombo Spice Bistro with 5 active tables, KOT tickets, and LKR currency).
+  - The Kitchen Board is **permanently in OLED dark mode** (`data-theme="dark"` / `#000000` background) regardless of global theme settings, ensuring low glare under harsh commercial kitchen fluorescent lighting.
+- **80mm Thermal Receipt Layout**:
+  - Receipts use `@media print` with explicit 80mm column width (`max-width: 80mm`), monospace tabular numerals, zero browser headers/footers, and immediate auto-print trigger.
