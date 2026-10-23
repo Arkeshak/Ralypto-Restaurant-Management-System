@@ -10,6 +10,7 @@ import {
   Bike,
   Settings,
   Sparkles,
+  CreditCard,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -34,5 +35,6 @@ export const navItems: NavItem[] = [
   { to: '/accounts', label: 'Accounts', icon: Wallet, roles: ['owner', 'accountant'], feature: 'accounting_ledger' },
   { to: '/staff', label: 'Staff', icon: Users, roles: ['owner', 'manager'] },
   { to: '/ai', label: 'Ask AI', icon: Sparkles, roles: ['owner', 'manager'], feature: 'ai_assistant' },
+  { to: '/subscription', label: 'My Plan', icon: CreditCard, roles: ['owner', 'manager'] },
   { to: '/settings', label: 'Settings', icon: Settings, roles: ['owner', 'manager'] },
 ];
