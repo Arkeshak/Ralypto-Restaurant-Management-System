@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -25,9 +25,16 @@ export function PosPage() {
   const tableNumber = searchParams.get("number") || (tableId ? `T${tableId}` : undefined);
 
   // Shift Store state
-  const isShiftOpen = useShiftStore((s) => s.isOpen());
+  const currentShift = useShiftStore((s) => s.currentShift);
+  const fetchCurrentShift = useShiftStore((s) => s.fetchCurrentShift);
+  const isShiftOpen = currentShift?.status === "open";
   const recordPaymentToShift = useShiftStore((s) => s.recordPaymentToShift);
   const [isOpenShiftModalOpen, setIsOpenShiftModalOpen] = useState(false);
+
+  // Fetch current shift on mount if not already loaded
+  useEffect(() => {
+    fetchCurrentShift();
+  }, [fetchCurrentShift]);
 
   // Categories & Filtering
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");

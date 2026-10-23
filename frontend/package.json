@@ -9,6 +9,7 @@
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "i18n:check": "node scripts/check-i18n.js",
     "gen:api": "openapi-typescript ../api-contract/openapi.yaml -o ./src/api/generated.ts",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\""
@@ -40,6 +41,8 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.64.1",
     "@types/node": "^22.13.4",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",

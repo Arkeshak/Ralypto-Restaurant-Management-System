@@ -74,3 +74,5 @@ env/
 tmp/
 temp/
 *.tmp
+test-results/
+playwright-report/
