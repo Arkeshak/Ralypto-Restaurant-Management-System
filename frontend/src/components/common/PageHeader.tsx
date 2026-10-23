@@ -10,6 +10,7 @@ interface PageHeaderProps {
     icon?: LucideIcon;
     onClick: () => void;
     loading?: boolean;
+    disabled?: boolean;
     variant?: "primary" | "secondary" | "success" | "danger";
   };
   children?: React.ReactNode;
@@ -30,6 +31,7 @@ export function PageHeader({ title, description, action, children }: PageHeaderP
             icon={action.icon}
             onClick={action.onClick}
             loading={action.loading}
+            disabled={action.disabled}
             variant={action.variant ?? "primary"}
             size="md"
           />

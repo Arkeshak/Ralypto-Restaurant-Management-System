@@ -11,6 +11,7 @@ const LoginPage = lazy(() => import("../features/auth/LoginPage"));
 const PinLoginPage = lazy(() => import("../features/auth/PinLoginPage"));
 const TablesPage = lazy(() => import("../features/pos/TablesPage"));
 const PosPage = lazy(() => import("../features/pos/PosPage"));
+const OrderHistoryPage = lazy(() => import("../features/orders/OrderHistoryPage"));
 const KitchenPage = lazy(() => import("../features/kitchen/KitchenPage"));
 const WaiterPage = lazy(() => import("../features/waiter/WaiterPage"));
 const QrMenuPage = lazy(() => import("../features/qr-menu/QrMenuPage"));
@@ -110,6 +111,16 @@ export const router = createBrowserRouter([
       {
         path: "pos",
         element: <Navigate to="/billing" replace />,
+      },
+      {
+        path: "orders",
+        element: (
+          <RequireRole allowedRoles={["owner", "manager", "cashier", "super_admin"]}>
+            <Suspense fallback={<PageLoading />}>
+              <OrderHistoryPage />
+            </Suspense>
+          </RequireRole>
+        ),
       },
       {
         path: "kitchen",

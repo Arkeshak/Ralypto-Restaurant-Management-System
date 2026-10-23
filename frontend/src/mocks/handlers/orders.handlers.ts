@@ -92,9 +92,9 @@ export const ordersHandlers = [
 
   http.post('*/orders/:id/void', async ({ params, request }) => {
     const { id } = params;
-    const body = (await request.json()) as { managerPin: string; reason: string };
+    const body = (await request.json()) as { managerPin: string; reason: string; voidedBy?: string };
 
-    if (body.managerPin !== '1234') {
+    if (!['1234', '1111', '2222'].includes(body.managerPin)) {
       return HttpResponse.json(
         { code: 'FORBIDDEN', message: 'Invalid Manager PIN authorization' },
         { status: 403 }
@@ -104,6 +104,31 @@ export const ordersHandlers = [
     const order = orders.find((o) => o.id === id);
     if (order) {
       order.status = 'voided';
+      (order as any).voidedAt = new Date().toISOString();
+      (order as any).voidedBy = body.voidedBy || 'Manager';
+      (order as any).voidReason = body.reason;
+      return HttpResponse.json(order);
+    }
+    return HttpResponse.json({ code: 'ORDER_NOT_FOUND', message: 'Order not found' }, { status: 404 });
+  }),
+
+  http.post('*/orders/:id/refund', async ({ params, request }) => {
+    const { id } = params;
+    const body = (await request.json()) as { managerPin: string; reason: string; refundedBy?: string };
+
+    if (!['1234', '1111', '2222'].includes(body.managerPin)) {
+      return HttpResponse.json(
+        { code: 'FORBIDDEN', message: 'Invalid Manager PIN authorization' },
+        { status: 403 }
+      );
+    }
+
+    const order = orders.find((o) => o.id === id);
+    if (order) {
+      (order as any).status = 'refunded';
+      (order as any).refundedAt = new Date().toISOString();
+      (order as any).refundedBy = body.refundedBy || 'Manager';
+      (order as any).refundReason = body.reason;
       return HttpResponse.json(order);
     }
     return HttpResponse.json({ code: 'ORDER_NOT_FOUND', message: 'Order not found' }, { status: 404 });

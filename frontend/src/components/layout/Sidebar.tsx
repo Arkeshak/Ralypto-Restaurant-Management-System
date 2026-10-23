@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import {
   LayoutGrid,
+  Receipt,
   Smartphone,
   ChefHat,
   QrCode,
@@ -40,6 +41,12 @@ export const Sidebar: React.FC = () => {
       labelKey: 'nav.pos',
       icon: <LayoutGrid className="w-5 h-5" />,
       featureKey: 'pos_billing',
+      allowedRoles: ['owner', 'manager', 'cashier', 'super_admin'],
+    },
+    {
+      to: '/orders',
+      labelKey: 'nav.orders',
+      icon: <Receipt className="w-5 h-5" />,
       allowedRoles: ['owner', 'manager', 'cashier', 'super_admin'],
     },
     {

@@ -15,12 +15,13 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { BigButton } from "@/components/common/BigButton";
+import { useUiStore } from "@/stores/ui.store";
 import { toast } from "sonner";
 
 export function OnboardingPage() {
   const navigate = useNavigate();
+  const { isDemoMode, setDemoMode, setWalkthroughOpen } = useUiStore();
   const [currentStep, setCurrentStep] = useState(1);
-  const [demoMode, setDemoMode] = useState(true);
 
   // Form states
   const [restName, setRestName] = useState("Ceylon Spice Bistro");
@@ -37,10 +38,66 @@ export function OnboardingPage() {
     { number: 5, title: "Test Receipt", icon: Printer, desc: "Print a sample test bill" },
   ];
 
+  const saveWizardData = () => {
+    // 1. Save restaurant info
+    localStorage.setItem(
+      "ralypto_restaurant_info",
+      JSON.stringify({ name: restName, phone })
+    );
+
+    // 2. Generate and save tables
+    const count = parseInt(tableCount, 10) || 12;
+    const generatedTables = Array.from({ length: count }, (_, i) => ({
+      id: `table-wz-${i + 1}`,
+      number: `Table ${i + 1}`,
+      areaName: i < 6 ? "Main Hall" : "Terrace",
+      capacity: 4,
+      status: "available",
+      activeOrderId: null,
+      activeOrderTotalCents: null,
+    }));
+    localStorage.setItem("ralypto_tables_custom", JSON.stringify(generatedTables));
+
+    // 3. Save categories
+    const cats = categoriesText
+      .split(",")
+      .map((c) => c.trim())
+      .filter(Boolean)
+      .map((name, idx) => ({
+        id: `cat-wz-${idx + 1}`,
+        name,
+        sortOrder: idx + 1,
+        targetStation: name.toLowerCase().includes("bev") ? "bar" : "kitchen",
+      }));
+    localStorage.setItem("ralypto_categories_custom", JSON.stringify(cats));
+
+    // 4. Save staff invite
+    if (staffEmail) {
+      const existingStaff = JSON.parse(localStorage.getItem("ralypto_staff_list") || "[]");
+      const newStaff = [
+        ...existingStaff,
+        {
+          id: `usr-wz-${Date.now()}`,
+          name: staffEmail.split("@")[0],
+          email: staffEmail,
+          role: "cashier",
+          pin: "3333",
+          active: true,
+        },
+      ];
+      localStorage.setItem("ralypto_staff_list", JSON.stringify(newStaff));
+    }
+
+    // Mark onboarding complete and trigger walkthrough
+    localStorage.setItem("ralypto_onboarding_completed", "true");
+    setWalkthroughOpen(true);
+  };
+
   const handleNext = () => {
     if (currentStep < 5) {
       setCurrentStep(currentStep + 1);
     } else {
+      saveWizardData();
       toast.success("Setup complete! Welcome to Ralypto.");
       navigate("/tables");
     }
@@ -50,6 +107,7 @@ export function OnboardingPage() {
     if (currentStep < 5) {
       setCurrentStep(currentStep + 1);
     } else {
+      saveWizardData();
       navigate("/tables");
     }
   };
@@ -68,13 +126,13 @@ export function OnboardingPage() {
         {/* Demo Mode Switch */}
         <button
           onClick={() => {
-            const next = !demoMode;
+            const next = !isDemoMode;
             setDemoMode(next);
-            toast.info(next ? "Demo mode activated with sample data" : "Live production mode active");
+            toast.info(next ? "Demo practice mode active (sample data enabled)" : "Live production mode active");
           }}
           className="flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold hover:bg-bg transition-colors"
         >
-          {demoMode ? (
+          {isDemoMode ? (
             <ToggleRight className="h-5 w-5 text-success" />
           ) : (
             <ToggleLeft className="h-5 w-5 text-muted" />

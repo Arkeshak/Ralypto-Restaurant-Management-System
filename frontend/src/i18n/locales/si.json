@@ -13,7 +13,8 @@
     "subscription": "දායකත්වය සහ බිල්පත්",
     "settings": "සැකසුම්",
     "admin": "ප්‍රධාන පරිපාලක",
-    "dashboard": "උපකරණ පුවරුව"
+    "dashboard": "උපකරණ පුවරුව",
+    "orders": "ඇණවුම් ඉතිහාසය"
   },
   "auth": {
     "title": "Ralypto වෙත පිවිසෙන්න",

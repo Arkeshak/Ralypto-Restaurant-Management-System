@@ -10,6 +10,7 @@ import { BigButton } from "@/components/common/BigButton";
 
 import { tablesApi } from "@/api/endpoints/tables";
 import { formatMoney } from "@/lib/formatMoney";
+import { useReadOnly } from "@/hooks/useReadOnly";
 
 const initialTables: TableInfo[] = [
   { id: "1", number: 1, seats: 2, status: "free", area: "Inside" },
@@ -37,6 +38,7 @@ const statusFilters: { key: "all" | TableStatus; label: string }[] = [
 
 export default function TablesPage() {
   const navigate = useNavigate();
+  const { isReadOnly, preventInReadOnly } = useReadOnly();
   const [tables, setTables] = useState<TableInfo[]>(initialTables);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +79,10 @@ export default function TablesPage() {
   };
 
   const handleMoveConfirm = async () => {
+    if (isReadOnly) {
+      toast.error('Action blocked: Your account is in Read-Only mode. Please renew your plan.');
+      return;
+    }
     if (!selectedTable || !targetTableId) return;
     const target = tables.find((t) => t.id === targetTableId);
     if (!target) return;
@@ -112,6 +118,10 @@ export default function TablesPage() {
   };
 
   const handleMergeConfirm = async () => {
+    if (isReadOnly) {
+      toast.error('Action blocked: Your account is in Read-Only mode. Please renew your plan.');
+      return;
+    }
     if (!selectedTable || !targetTableId) return;
     const target = tables.find((t) => t.id === targetTableId);
     if (!target) return;
@@ -163,7 +173,7 @@ export default function TablesPage() {
         action={{
           label: "New Order",
           icon: Plus,
-          onClick: () => navigate("/billing"),
+          onClick: preventInReadOnly(() => navigate("/billing")),
         }}
       />
 

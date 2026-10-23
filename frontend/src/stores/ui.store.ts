@@ -38,6 +38,8 @@ interface UiState {
   themeMode: ThemeMode;
   theme: 'dark' | 'light';
   isSidebarOpen: boolean;
+  isDemoMode: boolean;
+  isWalkthroughOpen: boolean;
   activeManagerPinModal: {
     isOpen: boolean;
     title: string;
@@ -47,6 +49,8 @@ interface UiState {
   setThemeMode: (mode: ThemeMode) => void;
   toggleTheme: () => void;
   setSidebarOpen: (open: boolean) => void;
+  setDemoMode: (enabled: boolean) => void;
+  setWalkthroughOpen: (open: boolean) => void;
   openManagerPinModal: (
     title: string,
     description: string,
@@ -55,10 +59,17 @@ interface UiState {
   closeManagerPinModal: () => void;
 }
 
+const initialDemoMode =
+  typeof window !== 'undefined'
+    ? localStorage.getItem('ralypto_demo_mode') === 'true'
+    : false;
+
 export const useUiStore = create<UiState>((set) => ({
   themeMode: initialMode,
   theme: initialMode === 'light' ? 'light' : 'dark',
   isSidebarOpen: true,
+  isDemoMode: initialDemoMode,
+  isWalkthroughOpen: false,
   activeManagerPinModal: {
     isOpen: false,
     title: '',
@@ -91,6 +102,15 @@ export const useUiStore = create<UiState>((set) => ({
   },
 
   setSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
+
+  setDemoMode: (enabled: boolean) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ralypto_demo_mode', enabled ? 'true' : 'false');
+    }
+    set({ isDemoMode: enabled });
+  },
+
+  setWalkthroughOpen: (open: boolean) => set({ isWalkthroughOpen: open }),
 
   openManagerPinModal: (title, description, onSuccess) =>
     set({

@@ -62,6 +62,12 @@ export const ordersApi = {
       body: JSON.stringify(data),
     }),
 
+  refundOrder: (id: string, data: { managerPin: string; reason: string; refundedBy?: string }) =>
+    apiClient<Order>(`/orders/${id}/refund`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
   splitBill: (id: string, data: any) =>
     apiClient<any>(`/orders/${id}/split`, {
       method: 'POST',

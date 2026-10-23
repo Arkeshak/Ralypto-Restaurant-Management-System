@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { OfflineBadge } from '../common/OfflineBadge';
+import { ShiftStatusWidget } from './ShiftStatusWidget';
 import { changeLanguage } from '../../i18n';
 import { useTranslation } from 'react-i18next';
 import {
@@ -49,8 +50,11 @@ export const TopBar: React.FC = () => {
         </div>
       </div>
 
-      {/* Right Controls: OfflineBadge, Dev Plan Switcher, Theme, Language, Profile */}
+      {/* Right Controls: ShiftStatusWidget, OfflineBadge, Dev Plan Switcher, Theme, Language, Profile */}
       <div className="flex items-center gap-2 sm:gap-3">
+        {/* Shift Drawer Status */}
+        <ShiftStatusWidget />
+
         {/* Offline Badge */}
         <OfflineBadge />
 

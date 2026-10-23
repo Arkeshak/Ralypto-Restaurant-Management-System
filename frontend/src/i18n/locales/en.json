@@ -13,7 +13,8 @@
     "subscription": "Subscription & Billing",
     "settings": "Settings",
     "admin": "Super Admin",
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "orders": "Order History"
   },
   "auth": {
     "title": "Sign In to Ralypto",

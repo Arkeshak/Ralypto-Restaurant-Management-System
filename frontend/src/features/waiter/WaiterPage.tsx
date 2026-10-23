@@ -118,28 +118,61 @@ export function WaiterPage() {
         {/* Tab 2: My Orders */}
         {activeTab === "orders" && (
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">
-              My Active Tables
-            </h3>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-text">Active Orders Queue</h3>
+                <p className="text-xs text-muted">Orders placed by you and floor staff</p>
+              </div>
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-brand/10 text-brand border border-brand/20">
+                Assigned: Dilshan (Waiter)
+              </span>
+            </div>
+
             {myOrders.map((ord) => (
               <div
                 key={ord.id}
-                className="flex items-center justify-between p-4 rounded-card border border-border bg-surface"
+                className="flex items-center justify-between p-4 rounded-2xl border border-border bg-surface hover:border-brand/40 transition-colors shadow-sm"
               >
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xl font-bold text-text">{ord.table}</span>
-                    <span className="text-xs text-muted">#{ord.id}</span>
+                    <span className="text-xs font-mono text-muted">#{ord.id}</span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        ord.status === "ready"
+                          ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30"
+                          : ord.status === "billed"
+                          ? "bg-amber-500/10 text-amber-600 border border-amber-500/30"
+                          : "bg-blue-500/10 text-blue-600 border border-blue-500/30"
+                      }`}
+                    >
+                      {ord.status}
+                    </span>
                   </div>
-                  <p className="text-xs text-muted mt-0.5">{ord.itemsCount} dishes ordered</p>
+                  <p className="text-xs text-muted mt-1">{ord.itemsCount} dishes ordered · Dilshan</p>
                 </div>
-                <div className="text-right">
-                  <div className="text-base font-bold tabular-nums text-text">
-                    {formatMoney(ord.totalCents)}
+
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <div className="text-sm font-extrabold tabular-nums text-text">
+                      {formatMoney(ord.totalCents)}
+                    </div>
                   </div>
-                  <span className="text-xs font-semibold capitalize text-brand">
-                    {ord.status}
-                  </span>
+
+                  {ord.status !== "billed" ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toast.success(`Bill requested for ${ord.table}. Cashier and POS notified.`);
+                        ord.status = "billed";
+                      }}
+                      className="h-9 px-3 rounded-xl border border-border bg-bg hover:bg-surface text-text text-xs font-bold transition-all active:scale-95 shadow-sm"
+                    >
+                      Request Bill
+                    </button>
+                  ) : (
+                    <span className="text-xs font-bold text-amber-600">Bill Requested</span>
+                  )}
                 </div>
               </div>
             ))}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Plus, Minus, Trash2, Send, Printer, CreditCard, Pause, AlertOctagon } from "lucide-react";
 import { formatMoney } from "@/lib/formatMoney";
 import { BigButton } from "@/components/common/BigButton";
+import { useReadOnly } from "@/hooks/useReadOnly";
 import type { CartLine, Totals } from "./cartMath";
 
 export interface CartItem extends CartLine {
@@ -23,6 +24,12 @@ interface OrderCartPanelProps {
   onOpenPay: () => void;
   onHoldOrder: () => void;
   onVoidOrder: () => void;
+  onOpenDiscount?: () => void;
+  serviceChargeEnabled?: boolean;
+  onToggleServiceCharge?: () => void;
+  onOpenHeldOrders?: () => void;
+  heldOrdersCount?: number;
+  discountReason?: string;
   isSending?: boolean;
 }
 
@@ -38,8 +45,15 @@ export function OrderCartPanel({
   onOpenPay,
   onHoldOrder,
   onVoidOrder,
+  onOpenDiscount,
+  serviceChargeEnabled = true,
+  onToggleServiceCharge,
+  onOpenHeldOrders,
+  heldOrdersCount = 0,
+  discountReason,
   isSending,
 }: OrderCartPanelProps) {
+  const { isReadOnly, preventInReadOnly } = useReadOnly();
   const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
 
   return (
@@ -52,15 +66,27 @@ export function OrderCartPanel({
             {tableNumber ? `Table T${tableNumber}` : "Direct Takeaway"} · {items.length} items
           </span>
         </div>
-        {items.length > 0 && (
-          <button
-            onClick={onVoidOrder}
-            title="Void this entire order"
-            className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-danger hover:bg-danger-soft transition-colors"
-          >
-            <AlertOctagon className="h-3.5 w-3.5" /> Void
-          </button>
-        )}
+        <div className="flex items-center gap-1.5">
+          {heldOrdersCount > 0 && onOpenHeldOrders && (
+            <button
+              onClick={onOpenHeldOrders}
+              className="px-2.5 py-1 rounded-full text-xs font-bold border border-border bg-bg text-text hover:bg-surface transition-colors flex items-center gap-1"
+            >
+              <Pause className="h-3 w-3" />
+              <span>Held ({heldOrdersCount})</span>
+            </button>
+          )}
+          {items.length > 0 && (
+            <button
+              onClick={preventInReadOnly(onVoidOrder)}
+              disabled={isReadOnly}
+              title="Void this entire order"
+              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-danger hover:bg-danger-soft transition-colors disabled:opacity-50"
+            >
+              <AlertOctagon className="h-3.5 w-3.5" /> Void
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Cart Items List */}
@@ -155,22 +181,53 @@ export function OrderCartPanel({
       {/* Cart Summary & Actions Footer */}
       <div className="border-t border-border bg-surface p-4 shrink-0 space-y-3">
         {/* Breakdown */}
-        <div className="space-y-1 text-xs font-medium text-muted">
-          <div className="flex justify-between">
+        <div className="space-y-1.5 text-xs font-medium text-muted">
+          <div className="flex justify-between items-center">
             <span>Subtotal</span>
             <span className="tabular-nums text-text font-semibold">{formatMoney(totals.subtotal)}</span>
           </div>
-          {totals.discount > 0 && (
-            <div className="flex justify-between text-success">
-              <span>Discount</span>
-              <span className="tabular-nums font-semibold">-{formatMoney(totals.discount)}</span>
-            </div>
-          )}
-          <div className="flex justify-between">
-            <span>Service Charge (10%)</span>
-            <span className="tabular-nums text-text font-semibold">+{formatMoney(totals.service)}</span>
+
+          {/* Discount Row */}
+          <div className="flex justify-between items-center">
+            <button
+              type="button"
+              onClick={onOpenDiscount}
+              className="text-left text-xs font-semibold text-brand hover:underline flex items-center gap-1"
+            >
+              <span>{totals.discount > 0 ? `Discount (${discountReason || 'Applied'}):` : '+ Add Discount'}</span>
+            </button>
+            {totals.discount > 0 ? (
+              <span className="tabular-nums font-bold text-emerald-600">-{formatMoney(totals.discount)}</span>
+            ) : (
+              <span className="text-muted text-[11px]">-</span>
+            )}
           </div>
-          <div className="flex justify-between">
+
+          {/* Service Charge Toggle Row */}
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-1.5">
+              <span>Service Charge (10%)</span>
+              {onToggleServiceCharge && (
+                <button
+                  type="button"
+                  onClick={onToggleServiceCharge}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase transition-colors ${
+                    serviceChargeEnabled
+                      ? 'bg-brand text-surface'
+                      : 'bg-bg text-muted border border-border'
+                  }`}
+                >
+                  {serviceChargeEnabled ? 'ON' : 'OFF'}
+                </button>
+              )}
+            </div>
+            <span className="tabular-nums text-text font-semibold">
+              {serviceChargeEnabled ? `+${formatMoney(totals.service)}` : 'LKR 0.00'}
+            </span>
+          </div>
+
+          {/* Govt Tax */}
+          <div className="flex justify-between items-center">
             <span>Govt Tax (10%)</span>
             <span className="tabular-nums text-text font-semibold">+{formatMoney(totals.tax)}</span>
           </div>
@@ -188,14 +245,14 @@ export function OrderCartPanel({
         <div className="space-y-2 pt-1">
           {/* Main Primary Button: Send to Kitchen */}
           <BigButton
-            label="Send to Kitchen"
+            label={isReadOnly ? "Locked (Read-Only)" : "Send to Kitchen"}
             icon={Send}
             variant="primary"
             size="lg"
             full
             loading={isSending}
-            disabled={items.length === 0}
-            onClick={onSendToKitchen}
+            disabled={items.length === 0 || isReadOnly}
+            onClick={preventInReadOnly(onSendToKitchen)}
           />
 
           {/* Secondary Actions */}
@@ -213,16 +270,16 @@ export function OrderCartPanel({
               icon={CreditCard}
               variant="secondary"
               size="md"
-              disabled={items.length === 0}
-              onClick={onOpenPay}
+              disabled={items.length === 0 || isReadOnly}
+              onClick={preventInReadOnly(onOpenPay)}
             />
             <BigButton
               label="Hold"
               icon={Pause}
               variant="secondary"
               size="md"
-              disabled={items.length === 0}
-              onClick={onHoldOrder}
+              disabled={items.length === 0 || isReadOnly}
+              onClick={preventInReadOnly(onHoldOrder)}
             />
           </div>
         </div>

@@ -17,10 +17,12 @@ import { BigButton } from "@/components/common/BigButton";
 import { EmptyState } from "@/components/common/EmptyState";
 import { formatMoney } from "@/lib/formatMoney";
 import { toast } from "sonner";
+import { useReadOnly } from "@/hooks/useReadOnly";
 import { MOCK_CATEGORIES, MOCK_MENU_ITEMS } from "@/mocks/data/mockData";
 import type { MenuItem } from "@/api/types";
 
 export function MenuManagerPage() {
+  const { isReadOnly, preventInReadOnly } = useReadOnly();
   const [items, setItems] = useState<MenuItem[]>(MOCK_MENU_ITEMS);
   const [selectedCat, setSelectedCat] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -69,6 +71,10 @@ export function MenuManagerPage() {
 
   // Toggle availability in 1 tap
   const handleToggleAvailability = (item: MenuItem) => {
+    if (isReadOnly) {
+      toast.error("Action blocked: Your account is in Read-Only mode. Please renew your plan.");
+      return;
+    }
     const nextAvailable = !item.isAvailable;
     setItems((prev) =>
       prev.map((i) => (i.id === item.id ? { ...i, isAvailable: nextAvailable } : i))
@@ -82,6 +88,11 @@ export function MenuManagerPage() {
 
   // Inline Price Edit
   const handleSavePrice = (id: string) => {
+    if (isReadOnly) {
+      toast.error("Action blocked: Your account is in Read-Only mode. Please renew your plan.");
+      setEditingPriceId(null);
+      return;
+    }
     const parsed = parseFloat(tempPrice);
     if (!isNaN(parsed) && parsed > 0) {
       const newCents = Math.round(parsed * 100);
@@ -96,6 +107,10 @@ export function MenuManagerPage() {
   // Add Item Handler
   const handleAddItem = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) {
+      toast.error("Action blocked: Your account is in Read-Only mode. Please renew your plan.");
+      return;
+    }
     if (!name || !priceRupees) {
       toast.error("Please fill in item name and selling price.");
       return;
@@ -156,7 +171,7 @@ export function MenuManagerPage() {
         action={{
           label: "Add Item",
           icon: Plus,
-          onClick: () => setIsDrawerOpen(true),
+          onClick: preventInReadOnly(() => setIsDrawerOpen(true)),
         }}
       />
 

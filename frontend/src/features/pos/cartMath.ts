@@ -30,3 +30,18 @@ export function calcTotals(
     total: afterDiscount + service + tax,
   };
 }
+
+/**
+ * Splits a total amount in integer cents into N equal integer parts,
+ * distributing remainder cents so the sum of parts exactly equals totalCents.
+ */
+export function splitEqual(totalCents: number, parts: number): number[] {
+  if (parts <= 1) return [totalCents];
+  const base = Math.floor(totalCents / parts);
+  const remainder = totalCents % parts;
+  const result: number[] = [];
+  for (let i = 0; i < parts; i++) {
+    result.push(base + (i < remainder ? 1 : 0));
+  }
+  return result;
+}
