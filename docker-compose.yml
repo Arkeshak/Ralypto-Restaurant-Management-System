@@ -1,0 +1,73 @@
+services:
+  # ============================================================================
+  # PostgreSQL 16 Database
+  # Persistent transactional storage for all multi-tenant restaurant data
+  # ============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: ralypto-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ralypto_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ralypto_password}
+      POSTGRES_DB: ${POSTGRES_DB:-ralypto_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ralypto_user} -d ${POSTGRES_DB:-ralypto_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # Redis 7 Cache & Pub/Sub
+  # Real-time WebSocket sync, distributed session tokens, and caching
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: ralypto-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ============================================================================
+  # Backend Service Placeholder
+  # NOTE: The backend developer will implement and plug in the chosen backend
+  # runtime (e.g. Node/NestJS or Python/FastAPI) once selected.
+  #
+  # Example backend service configuration:
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: ralypto-backend
+  #   restart: unless-stopped
+  #   ports:
+  #     - "4000:4000"
+  #   environment:
+  #     - DATABASE_URL=postgresql://ralypto_user:ralypto_password@postgres:5432/ralypto_db
+  #     - REDIS_URL=redis://redis:6379
+  #     - PORT=4000
+  #     - GEMINI_API_KEY=${GEMINI_API_KEY}
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  # ============================================================================
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
