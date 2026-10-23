@@ -42,11 +42,20 @@ jobs:
       - name: Run TypeScript typecheck
         run: npm run typecheck
 
+      - name: Run i18n Completeness Check
+        run: npm run i18n:check
+
       - name: Run Unit Tests
         run: npm run test
 
       - name: Run Production Build
         run: npm run build
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E & Accessibility Tests
+        run: npm run test:e2e
 
   # ============================================================================
   # Backend Pipeline Placeholder: Backend Developer

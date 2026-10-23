@@ -23,6 +23,7 @@ export interface LocalOrder {
   };
   syncStatus: 'pending' | 'syncing' | 'synced' | 'failed';
   retryCount: number;
+  lastError?: string;
   createdAt: string;
 }
 
@@ -32,17 +33,30 @@ export interface CachedMenuItem {
   name: string;
   priceCents: number;
   isAvailable: boolean;
+  image?: string;
+}
+
+export interface CachedTable {
+  id: string;
+  number: number;
+  seats: number;
+  status: string;
+  area: string;
+  totalCents?: number;
+  minutesOpen?: number;
 }
 
 export interface SyncQueueItem {
   id?: number;
   clientUuid: string;
   queuedAt: string;
+  nextRetryAt?: number;
 }
 
 export class RalyptoDatabase extends Dexie {
   offlineOrders!: Table<LocalOrder, string>;
   cachedMenu!: Table<CachedMenuItem, string>;
+  cachedTables!: Table<CachedTable, string>;
   syncQueue!: Table<SyncQueueItem, number>;
 
   constructor() {
@@ -51,6 +65,13 @@ export class RalyptoDatabase extends Dexie {
       offlineOrders: 'clientUuid, syncStatus, createdAt',
       cachedMenu: 'id, categoryId',
       syncQueue: '++id, clientUuid, queuedAt',
+    });
+
+    this.version(2).stores({
+      offlineOrders: 'clientUuid, syncStatus, createdAt',
+      cachedMenu: 'id, categoryId',
+      cachedTables: 'id, area',
+      syncQueue: '++id, clientUuid, queuedAt, nextRetryAt',
     });
   }
 }

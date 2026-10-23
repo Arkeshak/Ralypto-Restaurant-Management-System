@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   UtensilsCrossed,
   Plus,
@@ -16,15 +17,19 @@ import { BigButton } from "@/components/common/BigButton";
 import { EmptyState } from "@/components/common/EmptyState";
 import { formatMoney } from "@/lib/formatMoney";
 import { toast } from "sonner";
+import { useReadOnly } from "@/hooks/useReadOnly";
+import { menuApi } from "@/api/endpoints/menu";
 import { MOCK_CATEGORIES, MOCK_MENU_ITEMS } from "@/mocks/data/mockData";
 import type { MenuItem } from "@/api/types";
 
 export function MenuManagerPage() {
+  const { isReadOnly, preventInReadOnly } = useReadOnly();
   const [items, setItems] = useState<MenuItem[]>(MOCK_MENU_ITEMS);
   const [selectedCat, setSelectedCat] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
   const [tempPrice, setTempPrice] = useState<string>("");
+  const parentRef = useRef<HTMLDivElement>(null);
 
   // Add Item Drawer state
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -58,9 +63,23 @@ export function MenuManagerPage() {
     });
   }, [items, selectedCat, searchQuery]);
 
-  // Toggle availability in 1 tap
-  const handleToggleAvailability = (item: MenuItem) => {
-    const nextAvailable = !item.isAvailable;
+  const rowVirtualizer = useVirtualizer({
+    count: filteredItems.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 64,
+    overscan: 5,
+  });
+
+  // Toggle availability in 1 tap (optimistic with rollback)
+  const handleToggleAvailability = async (item: MenuItem) => {
+    if (isReadOnly) {
+      toast.error("Action blocked: Your account is in Read-Only mode. Please renew your plan.");
+      return;
+    }
+    const previousAvailable = item.isAvailable;
+    const nextAvailable = !previousAvailable;
+
+    // 1. Optimistic immediate update
     setItems((prev) =>
       prev.map((i) => (i.id === item.id ? { ...i, isAvailable: nextAvailable } : i))
     );
@@ -69,10 +88,26 @@ export function MenuManagerPage() {
     } else {
       toast.warning(`${item.name} marked as Sold Out`);
     }
+
+    // 2. Perform backend update
+    try {
+      await menuApi.updateItem(item.id, { isAvailable: nextAvailable });
+    } catch {
+      // 3. Rollback if call fails
+      setItems((prev) =>
+        prev.map((i) => (i.id === item.id ? { ...i, isAvailable: previousAvailable } : i))
+      );
+      toast.error(`Failed to update ${item.name}. Reverting to ${previousAvailable ? 'Available' : 'Sold Out'}.`);
+    }
   };
 
   // Inline Price Edit
   const handleSavePrice = (id: string) => {
+    if (isReadOnly) {
+      toast.error("Action blocked: Your account is in Read-Only mode. Please renew your plan.");
+      setEditingPriceId(null);
+      return;
+    }
     const parsed = parseFloat(tempPrice);
     if (!isNaN(parsed) && parsed > 0) {
       const newCents = Math.round(parsed * 100);
@@ -87,6 +122,10 @@ export function MenuManagerPage() {
   // Add Item Handler
   const handleAddItem = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) {
+      toast.error("Action blocked: Your account is in Read-Only mode. Please renew your plan.");
+      return;
+    }
     if (!name || !priceRupees) {
       toast.error("Please fill in item name and selling price.");
       return;
@@ -147,7 +186,7 @@ export function MenuManagerPage() {
         action={{
           label: "Add Item",
           icon: Plus,
-          onClick: () => setIsDrawerOpen(true),
+          onClick: preventInReadOnly(() => setIsDrawerOpen(true)),
         }}
       />
 
@@ -205,10 +244,10 @@ export function MenuManagerPage() {
         </div>
       ) : (
         <div className="mt-6 overflow-hidden rounded-card border border-border bg-surface shadow-card">
-          <div className="overflow-x-auto">
+          <div ref={parentRef} className="overflow-x-auto max-h-[700px] overflow-y-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-border bg-bg/50 text-xs font-semibold uppercase tracking-wider text-muted">
+                <tr className="border-b border-border bg-bg/50 text-xs font-semibold uppercase tracking-wider text-muted sticky top-0 z-10 backdrop-blur-md">
                   <th className="py-3.5 px-4">Item</th>
                   <th className="py-3.5 px-4">Category</th>
                   <th className="py-3.5 px-4">Price (LKR)</th>
@@ -217,8 +256,11 @@ export function MenuManagerPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60 text-sm">
-                {filteredItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-bg/40 transition-colors">
+                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const item = filteredItems[virtualRow.index];
+                  if (!item) return null;
+                  return (
+                    <tr key={item.id} className="hover:bg-bg/40 transition-colors">
                     {/* Item Name & Photo */}
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
@@ -308,8 +350,9 @@ export function MenuManagerPage() {
                       {item.modifiers ? `${item.modifiers.length} modifiers` : "None"}
                     </td>
                   </tr>
-                ))}
-              </tbody>
+                );
+              })}
+            </tbody>
             </table>
           </div>
         </div>

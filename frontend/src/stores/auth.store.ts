@@ -49,7 +49,7 @@ export const PLAN_FEATURE_FLAGS_MAP: Record<PlanCode, FeatureFlags> = {
     accounting_ledger: false,
     hr_payroll: false,
     multi_branch: false,
-    ai_assistant: false,
+    ai_assistant: true,
     ai_stock_prediction: true,
     ai_menu_builder: false,
   },
@@ -71,11 +71,13 @@ export const PLAN_FEATURE_FLAGS_MAP: Record<PlanCode, FeatureFlags> = {
   },
 };
 
-const initialToken = localStorage.getItem('ralypto_token');
-const initialUserJson = localStorage.getItem('ralypto_user');
-const initialPlanJson = localStorage.getItem('ralypto_plan');
-const initialRestaurantJson = localStorage.getItem('ralypto_restaurant');
-const initialFlagsJson = localStorage.getItem('ralypto_flags');
+const hasLocalStorage = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+
+const initialToken = hasLocalStorage ? localStorage.getItem('ralypto_token') : null;
+const initialUserJson = hasLocalStorage ? localStorage.getItem('ralypto_user') : null;
+const initialPlanJson = hasLocalStorage ? localStorage.getItem('ralypto_plan') : null;
+const initialRestaurantJson = hasLocalStorage ? localStorage.getItem('ralypto_restaurant') : null;
+const initialFlagsJson = hasLocalStorage ? localStorage.getItem('ralypto_flags') : null;
 
 export const useAuthStore = create<AuthState>((set) => ({
   token: initialToken,
@@ -87,11 +89,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: false,
 
   setAuth: ({ token, user, restaurant, plan, featureFlags }) => {
-    localStorage.setItem('ralypto_token', token);
-    localStorage.setItem('ralypto_user', JSON.stringify(user));
-    localStorage.setItem('ralypto_restaurant', JSON.stringify(restaurant));
-    localStorage.setItem('ralypto_plan', JSON.stringify(plan));
-    localStorage.setItem('ralypto_flags', JSON.stringify(featureFlags));
+    if (hasLocalStorage) {
+      localStorage.setItem('ralypto_token', token);
+      localStorage.setItem('ralypto_user', JSON.stringify(user));
+      localStorage.setItem('ralypto_restaurant', JSON.stringify(restaurant));
+      localStorage.setItem('ralypto_plan', JSON.stringify(plan));
+      localStorage.setItem('ralypto_flags', JSON.stringify(featureFlags));
+    }
 
     set({
       token,
@@ -113,8 +117,10 @@ export const useAuthStore = create<AuthState>((set) => ({
         planCode === 'basic' ? 1250000 : planCode === 'standard' ? 2450000 : 4800000,
     };
 
-    localStorage.setItem('ralypto_plan', JSON.stringify(updatedPlan));
-    localStorage.setItem('ralypto_flags', JSON.stringify(flags));
+    if (hasLocalStorage) {
+      localStorage.setItem('ralypto_plan', JSON.stringify(updatedPlan));
+      localStorage.setItem('ralypto_flags', JSON.stringify(flags));
+    }
 
     set({
       plan: updatedPlan,
@@ -123,11 +129,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: () => {
-    localStorage.removeItem('ralypto_token');
-    localStorage.removeItem('ralypto_user');
-    localStorage.removeItem('ralypto_restaurant');
-    localStorage.removeItem('ralypto_plan');
-    localStorage.removeItem('ralypto_flags');
+    if (hasLocalStorage) {
+      localStorage.removeItem('ralypto_token');
+      localStorage.removeItem('ralypto_user');
+      localStorage.removeItem('ralypto_restaurant');
+      localStorage.removeItem('ralypto_plan');
+      localStorage.removeItem('ralypto_flags');
+    }
 
     set({
       token: null,

@@ -15,10 +15,15 @@ import { BigButton } from "@/components/common/BigButton";
 import { formatMoney } from "@/lib/formatMoney";
 import { toast } from "sonner";
 import { MOCK_MENU_ITEMS } from "@/mocks/data/mockData";
+import { MicButton } from "@/components/voice/MicButton";
+import { VoiceOrderDraftModal } from "@/components/voice/VoiceOrderDraftModal";
+import { parseVoiceOrder } from "@/lib/voiceParser";
+import type { VoiceOrderDraft } from "@/api/types";
 
 export function WaiterPage() {
   const [activeTab, setActiveTab] = useState<"tables" | "orders" | "ready" | "menu">("tables");
   const [selectedTable, setSelectedTable] = useState<string>("T2");
+  const [activeVoiceDraft, setActiveVoiceDraft] = useState<VoiceOrderDraft | null>(null);
 
   // Waiter cart
   const [waiterCart, setWaiterCart] = useState<
@@ -49,6 +54,41 @@ export function WaiterPage() {
     ]);
   };
 
+  const handleVoiceTranscript = (transcript: string) => {
+    const draft = parseVoiceOrder(transcript, MOCK_MENU_ITEMS);
+    setActiveVoiceDraft(draft);
+  };
+
+  const handleConfirmVoiceDraft = (confirmed: VoiceOrderDraft) => {
+    if (confirmed.tableNumber) {
+      setSelectedTable(confirmed.tableNumber.replace('Table ', 'T'));
+    }
+
+    const newCartItems = confirmed.items.map((i) => ({
+      id: i.menuItemId,
+      name: i.name,
+      priceCents: i.unitPriceCents,
+      qty: i.quantity,
+    }));
+
+    setWaiterCart((prev) => {
+      const merged = [...prev];
+      for (const item of newCartItems) {
+        const existing = merged.find((m) => m.id === item.id);
+        if (existing) {
+          existing.qty += item.qty;
+        } else {
+          merged.push(item);
+        }
+      }
+      return merged;
+    });
+
+    toast.success(`Voice order added to ${confirmed.tableNumber || selectedTable}`);
+    setActiveVoiceDraft(null);
+    setActiveTab("menu");
+  };
+
   const handleSendOrder = () => {
     toast.success(`Order for ${selectedTable} sent to Kitchen`);
     setWaiterCart([]);
@@ -67,12 +107,19 @@ export function WaiterPage() {
             Table: {selectedTable}
           </span>
         </div>
-        <button
-          onClick={handleSimulateReadyAlert}
-          className="text-xs font-semibold rounded-full border border-border bg-bg px-3 py-1.5 hover:bg-surface text-muted hover:text-text transition-colors"
-        >
-          Test Ready Alert
-        </button>
+        <div className="flex items-center gap-2.5">
+          <MicButton
+            size="sm"
+            label="Voice Order"
+            onTranscript={handleVoiceTranscript}
+          />
+          <button
+            onClick={handleSimulateReadyAlert}
+            className="text-xs font-semibold rounded-full border border-border bg-bg px-3 py-1.5 hover:bg-surface text-muted hover:text-text transition-colors"
+          >
+            Test Ready Alert
+          </button>
+        </div>
       </div>
 
       {/* Main Tab Content */}
@@ -118,28 +165,61 @@ export function WaiterPage() {
         {/* Tab 2: My Orders */}
         {activeTab === "orders" && (
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">
-              My Active Tables
-            </h3>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-text">Active Orders Queue</h3>
+                <p className="text-xs text-muted">Orders placed by you and floor staff</p>
+              </div>
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-brand/10 text-brand border border-brand/20">
+                Assigned: Dilshan (Waiter)
+              </span>
+            </div>
+
             {myOrders.map((ord) => (
               <div
                 key={ord.id}
-                className="flex items-center justify-between p-4 rounded-card border border-border bg-surface"
+                className="flex items-center justify-between p-4 rounded-2xl border border-border bg-surface hover:border-brand/40 transition-colors shadow-sm"
               >
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xl font-bold text-text">{ord.table}</span>
-                    <span className="text-xs text-muted">#{ord.id}</span>
+                    <span className="text-xs font-mono text-muted">#{ord.id}</span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        ord.status === "ready"
+                          ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30"
+                          : ord.status === "billed"
+                          ? "bg-amber-500/10 text-amber-600 border border-amber-500/30"
+                          : "bg-blue-500/10 text-blue-600 border border-blue-500/30"
+                      }`}
+                    >
+                      {ord.status}
+                    </span>
                   </div>
-                  <p className="text-xs text-muted mt-0.5">{ord.itemsCount} dishes ordered</p>
+                  <p className="text-xs text-muted mt-1">{ord.itemsCount} dishes ordered · Dilshan</p>
                 </div>
-                <div className="text-right">
-                  <div className="text-base font-bold tabular-nums text-text">
-                    {formatMoney(ord.totalCents)}
+
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <div className="text-sm font-extrabold tabular-nums text-text">
+                      {formatMoney(ord.totalCents)}
+                    </div>
                   </div>
-                  <span className="text-xs font-semibold capitalize text-brand">
-                    {ord.status}
-                  </span>
+
+                  {ord.status !== "billed" ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toast.success(`Bill requested for ${ord.table}. Cashier and POS notified.`);
+                        ord.status = "billed";
+                      }}
+                      className="h-9 px-3 rounded-xl border border-border bg-bg hover:bg-surface text-text text-xs font-bold transition-all active:scale-95 shadow-sm"
+                    >
+                      Request Bill
+                    </button>
+                  ) : (
+                    <span className="text-xs font-bold text-amber-600">Bill Requested</span>
+                  )}
                 </div>
               </div>
             ))}
@@ -329,6 +409,16 @@ export function WaiterPage() {
           Orders
         </button>
       </div>
+
+      {activeVoiceDraft && (
+        <VoiceOrderDraftModal
+          draft={activeVoiceDraft}
+          isOpen={!!activeVoiceDraft}
+          onClose={() => setActiveVoiceDraft(null)}
+          onConfirm={handleConfirmVoiceDraft}
+          confirmLabel="Add to Waiter Cart"
+        />
+      )}
     </div>
   );
 }

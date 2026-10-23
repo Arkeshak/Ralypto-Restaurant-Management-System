@@ -11,6 +11,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { kitchenApi } from "@/api/endpoints/kitchen";
 
 interface KitchenTicketItem {
   id: string;
@@ -119,7 +120,7 @@ export function KitchenPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleAdvanceStatus = (ticket: KitchenTicket) => {
+  const handleAdvanceStatus = async (ticket: KitchenTicket) => {
     let nextStatus: "new" | "preparing" | "ready" | "done";
     let message = "";
 
@@ -134,6 +135,9 @@ export function KitchenPage() {
       message = `Collected ${ticket.tableNumber}`;
     }
 
+    const previousTickets = [...tickets];
+
+    // 1. Optimistic update
     if (nextStatus === "done") {
       setTickets((prev) => prev.filter((t) => t.id !== ticket.id));
     } else {
@@ -144,6 +148,31 @@ export function KitchenPage() {
 
     toast.success(message);
     playAlertSound();
+
+    // 2. Perform API call
+    try {
+      const apiStatus = nextStatus === "done" ? "collected" : nextStatus;
+      await kitchenApi.updateTicketStatus(ticket.id, apiStatus);
+    } catch {
+      // 3. Rollback on failure
+      setTickets(previousTickets);
+      toast.error(`Failed to update ${ticket.tableNumber}. Reverting status.`);
+    }
+  };
+
+  const handleRecallTicket = async (ticket: KitchenTicket) => {
+    const previousTickets = [...tickets];
+    setTickets((prev) =>
+      prev.map((t) => (t.id === ticket.id ? { ...t, status: "preparing" } : t))
+    );
+    toast.info(`Recalled ${ticket.tableNumber} back to Preparing queue`);
+
+    try {
+      await kitchenApi.updateTicketStatus(ticket.id, "preparing");
+    } catch {
+      setTickets(previousTickets);
+      toast.error(`Failed to recall ${ticket.tableNumber}. Reverting.`);
+    }
   };
 
   const filteredTickets = tickets.filter(
@@ -169,8 +198,8 @@ export function KitchenPage() {
   ];
 
   const getTimerTone = (minutes: number) => {
-    if (minutes >= 20) return "text-danger bg-danger-soft border-danger/30";
-    if (minutes >= 10) return "text-warning bg-warning-soft border-warning/30";
+    if (minutes >= 20) return "text-rose-400 bg-rose-500/20 border-rose-500/40 animate-pulse";
+    if (minutes >= 10) return "text-amber-400 bg-amber-500/20 border-amber-500/40";
     return "text-muted bg-surface/50 border-border/40";
   };
 
@@ -289,9 +318,9 @@ export function KitchenPage() {
                                 <span className="text-base font-extrabold">×{item.quantity}</span>
                               </div>
                               {item.notes && (
-                                <p className="mt-0.5 text-xs text-amber-400 font-medium">
-                                  Note: {item.notes}
-                                </p>
+                                <div className="mt-1 px-2.5 py-1 rounded-xl bg-amber-500/20 border border-amber-500/40 text-xs font-bold text-amber-300 tracking-wide">
+                                  NOTE: {item.notes}
+                                </div>
                               )}
                             </div>
                           ))}
@@ -307,7 +336,7 @@ export function KitchenPage() {
                             ticket.status === "new"
                               ? "bg-[#f5f5f7] text-black hover:bg-white"
                               : ticket.status === "preparing"
-                              ? "bg-success text-white hover:opacity-90"
+                              ? "bg-emerald-600 text-white hover:opacity-90"
                               : "bg-[#2c2c2e] text-[#f5f5f7] border border-border hover:bg-[#3a3a3c]"
                           }`}
                         >
@@ -327,6 +356,16 @@ export function KitchenPage() {
                             </>
                           )}
                         </motion.button>
+
+                        {ticket.status === "ready" && (
+                          <button
+                            type="button"
+                            onClick={() => handleRecallTicket(ticket)}
+                            className="w-full mt-2 h-9 rounded-xl border border-border text-xs font-semibold text-muted hover:text-[#f5f5f7] hover:bg-[#2c2c2e] transition-colors"
+                          >
+                            Recall to Preparing
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))

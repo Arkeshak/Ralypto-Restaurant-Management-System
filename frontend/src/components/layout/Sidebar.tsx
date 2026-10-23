@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import {
   LayoutGrid,
+  Receipt,
   Smartphone,
   ChefHat,
   QrCode,
@@ -17,6 +18,7 @@ import {
   Settings,
   ShieldCheck,
   Lock,
+  CalendarCheck,
 } from 'lucide-react';
 import { useUiStore } from '../../stores/ui.store';
 import type { FeatureFlags } from '../../api/types';
@@ -40,6 +42,18 @@ export const Sidebar: React.FC = () => {
       labelKey: 'nav.pos',
       icon: <LayoutGrid className="w-5 h-5" />,
       featureKey: 'pos_billing',
+      allowedRoles: ['owner', 'manager', 'cashier', 'super_admin'],
+    },
+    {
+      to: '/reservations',
+      labelKey: 'nav.reservations',
+      icon: <CalendarCheck className="w-5 h-5" />,
+      allowedRoles: ['owner', 'manager', 'cashier', 'waiter', 'super_admin'],
+    },
+    {
+      to: '/orders',
+      labelKey: 'nav.orders',
+      icon: <Receipt className="w-5 h-5" />,
       allowedRoles: ['owner', 'manager', 'cashier', 'super_admin'],
     },
     {

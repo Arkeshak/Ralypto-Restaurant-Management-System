@@ -14,8 +14,8 @@ export default defineConfig({
         name: 'Ralypto Restaurant Management OS',
         short_name: 'Ralypto',
         description: 'Next-gen restaurant POS, Waiter, KDS and operations management platform',
-        theme_color: '#dc2626',
-        background_color: '#09090b',
+        theme_color: '#000000',
+        background_color: '#000000',
         display: 'standalone',
         orientation: 'any',
         start_url: '/',
@@ -38,6 +38,39 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src')
     }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+            return 'vendor-react';
+          }
+          if (id.includes('node_modules/react-router') || id.includes('node_modules/react-router-dom/')) {
+            return 'vendor-router';
+          }
+          if (id.includes('node_modules/framer-motion/')) {
+            return 'vendor-motion';
+          }
+          if (id.includes('node_modules/recharts/')) {
+            return 'vendor-recharts';
+          }
+          if (id.includes('node_modules/i18next') || id.includes('node_modules/react-i18next/')) {
+            return 'vendor-i18n';
+          }
+          if (id.includes('node_modules/@tanstack/react-query/')) {
+            return 'vendor-query';
+          }
+          if (id.includes('node_modules/lucide-react/')) {
+            return 'vendor-icons';
+          }
+          if (id.includes('node_modules/dexie/')) {
+            return 'vendor-dexie';
+          }
+        }
+      }
+    },
+    chunkSizeWarningLimit: 600
   },
   server: {
     port: 5173,

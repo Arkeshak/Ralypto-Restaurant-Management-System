@@ -13,7 +13,9 @@
     "subscription": "சந்தா & பில்லிங்",
     "settings": "அமைப்புகள்",
     "admin": "முதன்மை நிர்வாகி",
-    "dashboard": "முகப்பு பலகை"
+    "dashboard": "முகப்பு பலகை",
+    "orders": "ஆர்டர் வரலாறு",
+    "reservations": "முன்பதிவுகள் & காத்திருப்பு பட்டியல்"
   },
   "auth": {
     "title": "Ralypto-வில் உள்நுழையவும்",
@@ -85,6 +87,48 @@
     "basic": "Basic திட்டம்",
     "standard": "Standard திட்டம்",
     "premium": "Premium திட்டம்",
-    "switcherTitle": "டெமோ திட்டத்தை மாற்றவும் (Dev Mode)"
+    "switcherTitle": "சந்தா அடுக்குகள்"
+  },
+  "receipt": {
+    "billNo": "பில் எண் #{{number}}",
+    "thankYou": "எங்களுடன் உணவருந்தியதற்கு நன்றி!",
+    "printBill": "80mm பில்லை அச்சிடுக",
+    "whatsappBill": "WhatsApp பில்",
+    "smsBill": "SMS பில்",
+    "done": "முடிந்தது"
+  },
+  "tables": {
+    "moveTitle": "மேசையை மாற்று T{{number}}",
+    "moveDesc": "இந்த ஆர்டரை மாற்ற காலியான ஒரு மேசையைத் தேர்ந்தெடுக்கவும்.",
+    "mergeTitle": "மேசைகளை இணைக்கவும் T{{number}}",
+    "mergeDesc": "செயலில் உள்ள மற்றொரு மேசையுடன் இணைக்கவும்.",
+    "selectFree": "காலியான மேசையைத் தேர்ந்தெடுக்கவும்...",
+    "selectBusy": "செயலில் உள்ள மேசையைத் தேர்ந்தெடுக்கவும்...",
+    "combinedPreview": "இணைக்கப்பட்ட ஆர்டர் முன்னோட்டம்",
+    "newTotal": "புதிய இணைந்த மொத்தம்",
+    "managerPin": "மேலாளர் பின் (தேவைப்பட்டால்)"
+  },
+  "kitchen": {
+    "kdsTitle": "சமையலறை காட்சி அமைப்பு (KDS)",
+    "newTickets": "புதிய டிக்கெட்டுகள்",
+    "preparing": "தயாராகிறது",
+    "ready": "பரிமாறத் தயார்",
+    "advance": "முன்னேறு",
+    "stationAll": "அனைத்து நிலையங்கள்",
+    "stationKitchen": "சமையலறை மட்டும்",
+    "stationBar": "பார் மட்டும்",
+    "muteSound": "ஒலியை முடக்கு"
+  },
+  "reports": {
+    "reportsTitle": "அறிக்கைகள் & பகுப்பாய்வு",
+    "todaySales": "இன்றைய விற்பனை",
+    "ordersCount": "மொத்த ஆர்டர்கள்",
+    "activeTables": "செயலில் உள்ள மேசைகள்",
+    "averageTicket": "சராசரி பில் தொகை",
+    "salesByHour": "மணிநேர வாரியான விற்பனை",
+    "topDishes": "முதல் 5 உணவுகள்",
+    "exportCsv": "CSV ஏற்றுமதி செய்",
+    "printReport": "அறிக்கையை அச்சிடுக",
+    "aiAdvisorTitle": "AI உணவக ஆலோசகர்"
   }
 }

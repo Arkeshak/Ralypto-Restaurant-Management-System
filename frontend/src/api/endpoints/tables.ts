@@ -15,4 +15,21 @@ export const tablesApi = {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
+
+  moveTable: (sourceTableId: string, targetTableId: string) =>
+    apiClient<{ success: boolean; sourceTable: Table; targetTable: Table }>('/tables/move', {
+      method: 'POST',
+      body: JSON.stringify({ sourceTableId, targetTableId }),
+    }),
+
+  mergeTable: (sourceTableId: string, targetTableId: string, managerPin?: string) =>
+    apiClient<{
+      success: boolean;
+      sourceTable: Table;
+      targetTable: Table;
+      mergedTotalCents: number;
+    }>('/tables/merge', {
+      method: 'POST',
+      body: JSON.stringify({ sourceTableId, targetTableId, managerPin }),
+    }),
 };

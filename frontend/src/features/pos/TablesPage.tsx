@@ -8,6 +8,10 @@ import { TableCardSkeleton } from "@/components/common/Skeleton";
 import { EmptyState } from "@/components/common/EmptyState";
 import { BigButton } from "@/components/common/BigButton";
 
+import { tablesApi } from "@/api/endpoints/tables";
+import { formatMoney } from "@/lib/formatMoney";
+import { useReadOnly } from "@/hooks/useReadOnly";
+
 const initialTables: TableInfo[] = [
   { id: "1", number: 1, seats: 2, status: "free", area: "Inside" },
   { id: "2", number: 2, seats: 4, status: "busy", totalCents: 245000, minutesOpen: 18, area: "Inside" },
@@ -34,6 +38,7 @@ const statusFilters: { key: "all" | TableStatus; label: string }[] = [
 
 export default function TablesPage() {
   const navigate = useNavigate();
+  const { isReadOnly, preventInReadOnly } = useReadOnly();
   const [tables, setTables] = useState<TableInfo[]>(initialTables);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +50,8 @@ export default function TablesPage() {
   const [isMoveOpen, setIsMoveOpen] = useState(false);
   const [isMergeOpen, setIsMergeOpen] = useState(false);
   const [targetTableId, setTargetTableId] = useState<string>("");
+  const [mergeManagerPin, setMergeManagerPin] = useState<string>("");
+  const [actionLoading, setActionLoading] = useState(false);
 
   // Simulated live update increments minute timers
   useEffect(() => {
@@ -71,57 +78,84 @@ export default function TablesPage() {
     toast.success(`Bill requested for Table T${table.number}`);
   };
 
-  const handleMoveConfirm = () => {
+  const handleMoveConfirm = async () => {
+    if (isReadOnly) {
+      toast.error('Action blocked: Your account is in Read-Only mode. Please renew your plan.');
+      return;
+    }
     if (!selectedTable || !targetTableId) return;
     const target = tables.find((t) => t.id === targetTableId);
     if (!target) return;
 
-    setTables((prev) =>
-      prev.map((t) => {
-        if (t.id === selectedTable.id) {
-          return { ...t, status: "free", totalCents: undefined, minutesOpen: undefined };
-        }
-        if (t.id === targetTableId) {
-          return {
-            ...t,
-            status: selectedTable.status,
-            totalCents: selectedTable.totalCents,
-            minutesOpen: selectedTable.minutesOpen,
-          };
-        }
-        return t;
-      })
-    );
-    toast.success(`Moved order from T${selectedTable.number} to T${target.number}`);
-    setIsMoveOpen(false);
-    setSelectedTable(null);
+    setActionLoading(true);
+    try {
+      await tablesApi.moveTable(selectedTable.id, targetTableId);
+      setTables((prev) =>
+        prev.map((t) => {
+          if (t.id === selectedTable.id) {
+            return { ...t, status: "free", totalCents: undefined, minutesOpen: undefined };
+          }
+          if (t.id === targetTableId) {
+            return {
+              ...t,
+              status: selectedTable.status,
+              totalCents: selectedTable.totalCents,
+              minutesOpen: selectedTable.minutesOpen,
+            };
+          }
+          return t;
+        })
+      );
+      toast.success(`Moved order from T${selectedTable.number} to T${target.number}`);
+      setIsMoveOpen(false);
+      setSelectedTable(null);
+      setTargetTableId("");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to move table");
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  const handleMergeConfirm = () => {
+  const handleMergeConfirm = async () => {
+    if (isReadOnly) {
+      toast.error('Action blocked: Your account is in Read-Only mode. Please renew your plan.');
+      return;
+    }
     if (!selectedTable || !targetTableId) return;
     const target = tables.find((t) => t.id === targetTableId);
     if (!target) return;
 
-    const mergedTotal = (selectedTable.totalCents ?? 0) + (target.totalCents ?? 0);
-    setTables((prev) =>
-      prev.map((t) => {
-        if (t.id === selectedTable.id) {
-          return { ...t, status: "free", totalCents: undefined, minutesOpen: undefined };
-        }
-        if (t.id === targetTableId) {
-          return {
-            ...t,
-            status: "busy",
-            totalCents: mergedTotal,
-            minutesOpen: Math.max(selectedTable.minutesOpen ?? 0, target.minutesOpen ?? 0),
-          };
-        }
-        return t;
-      })
-    );
-    toast.success(`Merged T${selectedTable.number} into T${target.number}`);
-    setIsMergeOpen(false);
-    setSelectedTable(null);
+    setActionLoading(true);
+    try {
+      await tablesApi.mergeTable(selectedTable.id, targetTableId, mergeManagerPin || undefined);
+      const mergedTotal = (selectedTable.totalCents ?? 0) + (target.totalCents ?? 0);
+      setTables((prev) =>
+        prev.map((t) => {
+          if (t.id === selectedTable.id) {
+            return { ...t, status: "free", totalCents: undefined, minutesOpen: undefined };
+          }
+          if (t.id === targetTableId) {
+            return {
+              ...t,
+              status: "busy",
+              totalCents: mergedTotal,
+              minutesOpen: Math.max(selectedTable.minutesOpen ?? 0, target.minutesOpen ?? 0),
+            };
+          }
+          return t;
+        })
+      );
+      toast.success(`Merged T${selectedTable.number} into T${target.number}`);
+      setIsMergeOpen(false);
+      setSelectedTable(null);
+      setTargetTableId("");
+      setMergeManagerPin("");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to merge tables");
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   // Filtered tables
@@ -139,7 +173,7 @@ export default function TablesPage() {
         action={{
           label: "New Order",
           icon: Plus,
-          onClick: () => navigate("/billing"),
+          onClick: preventInReadOnly(() => navigate("/billing")),
         }}
       />
 
@@ -296,7 +330,8 @@ export default function TablesPage() {
                 label="Move Order"
                 variant="primary"
                 full
-                disabled={!targetTableId}
+                disabled={!targetTableId || actionLoading}
+                loading={actionLoading}
                 onClick={handleMoveConfirm}
               />
             </div>
@@ -311,22 +346,63 @@ export default function TablesPage() {
             <h3 className="text-xl font-semibold text-text">Merge Table T{selectedTable.number}</h3>
             <p className="mt-1 text-sm text-muted">Combine with another active busy table.</p>
 
-            <div className="mt-4 space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted">Merge Into</label>
-              <select
-                value={targetTableId}
-                onChange={(e) => setTargetTableId(e.target.value)}
-                className="w-full h-12 rounded-lg border border-border bg-bg px-3 text-base text-text focus:outline-none focus:ring-2 focus:ring-info"
-              >
-                <option value="">Select an active table...</option>
-                {tables
-                  .filter((t) => t.status !== "free" && t.id !== selectedTable.id)
-                  .map((t) => (
-                    <option key={t.id} value={t.id}>
-                      T{t.number} ({t.area})
-                    </option>
-                  ))}
-              </select>
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted">Merge Into</label>
+                <select
+                  value={targetTableId}
+                  onChange={(e) => setTargetTableId(e.target.value)}
+                  className="w-full h-12 rounded-lg border border-border bg-bg px-3 text-base text-text focus:outline-none focus:ring-2 focus:ring-info mt-1"
+                >
+                  <option value="">Select an active table...</option>
+                  {tables
+                    .filter((t) => t.status !== "free" && t.id !== selectedTable.id)
+                    .map((t) => (
+                      <option key={t.id} value={t.id}>
+                        T{t.number} ({t.area} · {formatMoney(t.totalCents || 0)})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Combined items and amount preview */}
+              {targetTableId && (() => {
+                const target = tables.find((t) => t.id === targetTableId);
+                if (!target) return null;
+                const combined = (selectedTable.totalCents || 0) + (target.totalCents || 0);
+
+                return (
+                  <div className="p-3.5 rounded-xl bg-bg border border-border text-xs space-y-2">
+                    <p className="font-semibold text-text uppercase tracking-wider text-[11px]">Combined Order Preview</p>
+                    <div className="flex justify-between text-muted">
+                      <span>Source: Table T{selectedTable.number}</span>
+                      <span className="font-semibold text-text">{formatMoney(selectedTable.totalCents || 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-muted">
+                      <span>Target: Table T{target.number}</span>
+                      <span className="font-semibold text-text">{formatMoney(target.totalCents || 0)}</span>
+                    </div>
+                    <div className="border-t border-border pt-2 flex justify-between font-bold text-sm text-text">
+                      <span>New Combined Total</span>
+                      <span className="text-brand">{formatMoney(combined)}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted">
+                  Manager PIN (if required)
+                </label>
+                <input
+                  type="password"
+                  maxLength={4}
+                  value={mergeManagerPin}
+                  onChange={(e) => setMergeManagerPin(e.target.value)}
+                  placeholder="••••"
+                  className="w-full h-11 px-3 mt-1 rounded-lg border border-border bg-bg text-text text-sm focus:outline-none focus:ring-2 focus:ring-info font-mono"
+                />
+              </div>
             </div>
 
             <div className="mt-6 flex gap-3">
@@ -334,16 +410,20 @@ export default function TablesPage() {
                 label="Cancel"
                 variant="secondary"
                 full
+                disabled={actionLoading}
                 onClick={() => {
                   setIsMergeOpen(false);
                   setSelectedTable(null);
+                  setTargetTableId("");
+                  setMergeManagerPin("");
                 }}
               />
               <BigButton
                 label="Merge Bills"
                 variant="primary"
                 full
-                disabled={!targetTableId}
+                disabled={!targetTableId || actionLoading}
+                loading={actionLoading}
                 onClick={handleMergeConfirm}
               />
             </div>

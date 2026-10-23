@@ -1,17 +1,21 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingBag, ChevronUp, X } from "lucide-react";
+import { ShoppingBag, ChevronUp, X, AlertTriangle } from "lucide-react";
 import { CategoryList } from "./CategoryList";
 import { MenuGrid } from "./MenuGrid";
 import { OrderCartPanel, type CartItem } from "./OrderCartPanel";
 import { ModifierSheet } from "./ModifierSheet";
 import { PaymentModal } from "./PaymentModal";
 import { ReceiptModal } from "./ReceiptModal";
+import { DiscountModal } from "./DiscountModal";
+import { HeldOrdersModal, type HeldOrder } from "./HeldOrdersModal";
+import { OpenShiftModal } from "./shifts/OpenShiftModal";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { calcTotals } from "./cartMath";
 import { formatMoney } from "@/lib/formatMoney";
+import { useShiftStore } from "@/stores/shift.store";
 import { MOCK_CATEGORIES, MOCK_MENU_ITEMS } from "@/mocks/data/mockData";
 import type { MenuItem, Modifier } from "@/api/types";
 
@@ -19,6 +23,18 @@ export function PosPage() {
   const [searchParams] = useSearchParams();
   const tableId = searchParams.get("table");
   const tableNumber = searchParams.get("number") || (tableId ? `T${tableId}` : undefined);
+
+  // Shift Store state
+  const currentShift = useShiftStore((s) => s.currentShift);
+  const fetchCurrentShift = useShiftStore((s) => s.fetchCurrentShift);
+  const isShiftOpen = currentShift?.status === "open";
+  const recordPaymentToShift = useShiftStore((s) => s.recordPaymentToShift);
+  const [isOpenShiftModalOpen, setIsOpenShiftModalOpen] = useState(false);
+
+  // Fetch current shift on mount if not already loaded
+  useEffect(() => {
+    fetchCurrentShift();
+  }, [fetchCurrentShift]);
 
   // Categories & Filtering
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
@@ -40,6 +56,17 @@ export function PosPage() {
       qty: 1,
     },
   ]);
+
+  // Discount & Charges state
+  const [discountPercent, setDiscountPercent] = useState<number>(0);
+  const [discountCents, setDiscountCents] = useState<number>(0);
+  const [discountReason, setDiscountReason] = useState<string>("");
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
+  const [serviceChargeEnabled, setServiceChargeEnabled] = useState<boolean>(true);
+
+  // Held Orders state
+  const [heldOrders, setHeldOrders] = useState<HeldOrder[]>([]);
+  const [isHeldModalOpen, setIsHeldModalOpen] = useState(false);
 
   // Modal states
   const [selectedItemForModifiers, setSelectedItemForModifiers] = useState<MenuItem | null>(null);
@@ -63,13 +90,18 @@ export function PosPage() {
     });
   }, [selectedCategoryId, searchQuery]);
 
-  // Cart Calculations with standard 10% tax and 10% service
+  // Cart Calculations with standard 10% tax and conditional service charge & discounts
   const totals = useMemo(() => {
     return calcTotals(
       cartItems.map((i) => ({ priceCents: i.priceCents, qty: i.qty })),
-      { servicePercent: 10, taxPercent: 10 }
+      {
+        discountPercent,
+        discountCents,
+        servicePercent: serviceChargeEnabled ? 10 : 0,
+        taxPercent: 10,
+      }
     );
-  }, [cartItems]);
+  }, [cartItems, discountPercent, discountCents, serviceChargeEnabled]);
 
   const handleSelectItem = (item: MenuItem) => {
     if (item.modifiers && item.modifiers.length > 0) {
@@ -160,29 +192,74 @@ export function PosPage() {
   };
 
   const handleOpenPay = () => {
+    if (!isShiftOpen) {
+      toast.error("Shift is closed. You must open a cash drawer shift to accept payments.");
+      setIsOpenShiftModalOpen(true);
+      return;
+    }
     setIsPayOpen(true);
   };
 
-  const handleConfirmPayment = (method: string) => {
+  const handleConfirmPayment = (paymentResult: any) => {
     setIsPayOpen(false);
     setIsMobileOrderOpen(false);
-    toast.success(`Payment of ${formatMoney(totals.total)} settled via ${method.toUpperCase()}`);
-    // Clear cart or redirect
+
+    if (paymentResult.method === "mixed") {
+      recordPaymentToShift("cash", paymentResult.cashCents || 0);
+      recordPaymentToShift("card", paymentResult.cardCents || 0);
+    } else {
+      recordPaymentToShift(paymentResult.method, paymentResult.paidAmountCents || totals.total);
+    }
+
+    toast.success(`Payment settled via ${String(paymentResult.method).toUpperCase()}`);
+    setIsReceiptOpen(true);
+    // Reset ticket
     setCartItems([]);
+    setDiscountPercent(0);
+    setDiscountCents(0);
+    setDiscountReason("");
   };
 
   const handleHoldOrder = () => {
-    toast.success("Order held on Table " + (tableNumber || "Direct"));
+    if (cartItems.length === 0) return;
+    const newHeld: HeldOrder = {
+      id: `held-${Date.now()}`,
+      orderNumber: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
+      tableNumber,
+      items: [...cartItems],
+      totals: { ...totals },
+      heldAt: new Date().toISOString(),
+    };
+    setHeldOrders((prev) => [newHeld, ...prev]);
+    setCartItems([]);
+    setDiscountPercent(0);
+    setDiscountCents(0);
+    setDiscountReason("");
+    toast.success(`Order held on Table ${tableNumber || "Direct"} (${newHeld.orderNumber})`);
+  };
+
+  const handleRecallOrder = (order: HeldOrder) => {
+    setCartItems(order.items);
+    setHeldOrders((prev) => prev.filter((o) => o.id !== order.id));
+    toast.success(`Recalled order ${order.orderNumber}`);
+  };
+
+  const handleDeleteHeldOrder = (id: string) => {
+    setHeldOrders((prev) => prev.filter((o) => o.id !== id));
+    toast.info("Held order discarded");
   };
 
   const handleConfirmVoid = (pin?: string) => {
-    if (pin === "1234" || pin === "2222") {
+    if (pin === "1234" || pin === "2222" || pin === "1111") {
       setCartItems([]);
+      setDiscountPercent(0);
+      setDiscountCents(0);
+      setDiscountReason("");
       setIsVoidPromptOpen(false);
       setIsMobileOrderOpen(false);
       toast.success("Order voided by Manager");
     } else {
-      toast.error("Incorrect Manager PIN");
+      toast.error("Incorrect Manager PIN (Try 2222 or 1111)");
     }
   };
 
@@ -190,8 +267,24 @@ export function PosPage() {
 
   return (
     <div className="relative flex h-[calc(100vh-6rem)] w-full overflow-hidden rounded-card border border-border bg-surface shadow-card">
+      {/* Shift Closed Warning Banner */}
+      {!isShiftOpen && (
+        <div className="absolute top-0 left-0 right-0 z-20 bg-amber-500/15 border-b border-amber-500/30 px-4 py-2 flex items-center justify-between text-xs font-semibold text-amber-800 backdrop-blur-sm">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+            <span>Cash Drawer Shift is closed. Billing and checkout are locked.</span>
+          </div>
+          <button
+            onClick={() => setIsOpenShiftModalOpen(true)}
+            className="px-3 py-1 rounded-full bg-brand text-surface font-bold hover:opacity-90 active:scale-95 transition-all"
+          >
+            Open Shift
+          </button>
+        </div>
+      )}
+
       {/* Column 1: Categories (Left) - Hidden on phone */}
-      <div className="hidden w-52 shrink-0 border-r border-border overflow-y-auto lg:block">
+      <div className={`hidden w-52 shrink-0 border-r border-border overflow-y-auto lg:block ${!isShiftOpen ? "pt-10" : ""}`}>
         <CategoryList
           categories={MOCK_CATEGORIES}
           selectedCategoryId={selectedCategoryId}
@@ -252,6 +345,12 @@ export function PosPage() {
           onOpenPay={handleOpenPay}
           onHoldOrder={handleHoldOrder}
           onVoidOrder={() => setIsVoidPromptOpen(true)}
+          onOpenDiscount={() => setIsDiscountModalOpen(true)}
+          serviceChargeEnabled={serviceChargeEnabled}
+          onToggleServiceCharge={() => setServiceChargeEnabled(!serviceChargeEnabled)}
+          onOpenHeldOrders={() => setIsHeldModalOpen(true)}
+          heldOrdersCount={heldOrders.length}
+          discountReason={discountReason}
           isSending={isSending}
         />
       </div>
@@ -312,6 +411,12 @@ export function PosPage() {
                   onOpenPay={handleOpenPay}
                   onHoldOrder={handleHoldOrder}
                   onVoidOrder={() => setIsVoidPromptOpen(true)}
+                  onOpenDiscount={() => setIsDiscountModalOpen(true)}
+                  serviceChargeEnabled={serviceChargeEnabled}
+                  onToggleServiceCharge={() => setServiceChargeEnabled(!serviceChargeEnabled)}
+                  onOpenHeldOrders={() => setIsHeldModalOpen(true)}
+                  heldOrdersCount={heldOrders.length}
+                  discountReason={discountReason}
                   isSending={isSending}
                 />
               </div>
@@ -335,6 +440,7 @@ export function PosPage() {
       <PaymentModal
         isOpen={isPayOpen}
         totalCents={totals.total}
+        items={cartItems}
         onClose={() => setIsPayOpen(false)}
         onConfirmPayment={handleConfirmPayment}
       />
@@ -351,6 +457,42 @@ export function PosPage() {
         totals={totals}
         onClose={() => setIsReceiptOpen(false)}
         onPrint={() => toast.success("Bill sent to 80mm thermal printer")}
+      />
+
+      {/* Discount Modal */}
+      <DiscountModal
+        isOpen={isDiscountModalOpen}
+        onClose={() => setIsDiscountModalOpen(false)}
+        subtotalCents={totals.subtotal}
+        currentDiscountPercent={discountPercent}
+        currentDiscountCents={discountCents}
+        currentReason={discountReason}
+        onApply={(d) => {
+          setDiscountPercent(d.percent);
+          setDiscountCents(d.cents);
+          setDiscountReason(d.reason);
+        }}
+        onRemove={() => {
+          setDiscountPercent(0);
+          setDiscountCents(0);
+          setDiscountReason("");
+        }}
+      />
+
+      {/* Held Orders Modal */}
+      <HeldOrdersModal
+        isOpen={isHeldModalOpen}
+        onClose={() => setIsHeldModalOpen(false)}
+        heldOrders={heldOrders}
+        onRecall={handleRecallOrder}
+        onDelete={handleDeleteHeldOrder}
+      />
+
+      {/* Open Shift Modal */}
+      <OpenShiftModal
+        isOpen={isOpenShiftModalOpen}
+        onClose={() => setIsOpenShiftModalOpen(false)}
+        onSuccess={() => toast.success("Shift opened! You can now accept payments.")}
       />
 
       {/* Void Manager PIN Modal */}

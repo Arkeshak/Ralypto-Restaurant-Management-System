@@ -86,6 +86,7 @@ export interface MenuItem {
   isSpicy: boolean;
   isAvailable: boolean;
   modifiers?: Modifier[];
+  aliases?: string[];
 }
 
 export type TableStatus = 'available' | 'occupied' | 'billed' | 'reserved' | 'cleaning';
@@ -128,12 +129,23 @@ export interface OrderItem {
   status: OrderItemStatus;
 }
 
+export type OrderSource =
+  | 'pos'
+  | 'waiter'
+  | 'qr'
+  | 'voice_waiter'
+  | 'voice_qr'
+  | 'whatsapp'
+  | 'phone';
+
 export interface Order {
   id: string;
   orderNumber: string;
   tableId?: string | null;
   tableNumber?: string | null;
   orderType: 'dine_in' | 'takeaway' | 'delivery' | 'qr_self_order';
+  source?: OrderSource;
+  aiAssisted?: boolean;
   status: OrderStatus;
   items: OrderItem[];
   subtotalCents: number;
@@ -143,6 +155,98 @@ export interface Order {
   totalCents: number;
   clientCreatedUuid?: string | null;
   createdAt: string;
+}
+
+export type ReservationStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'seated'
+  | 'completed'
+  | 'cancelled'
+  | 'no_show';
+
+export type ReservationSource =
+  | 'web'
+  | 'whatsapp'
+  | 'phone'
+  | 'staff'
+  | 'voice_agent';
+
+export interface Reservation {
+  id: string;
+  restaurantId: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string | null;
+  partySize: number;
+  reservationTime: string; // ISO-8601
+  durationMinutes: number;
+  tableId?: string | null;
+  tableNumber?: string | null;
+  status: ReservationStatus;
+  source: ReservationSource;
+  specialRequests?: string | null;
+  createdAt: string;
+}
+
+export interface CreateReservationDto {
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+  partySize: number;
+  reservationTime: string;
+  durationMinutes?: number;
+  tableId?: string;
+  tableNumber?: string;
+  source?: ReservationSource;
+  specialRequests?: string;
+}
+
+export type WaitlistStatus = 'waiting' | 'notified' | 'seated' | 'cancelled';
+
+export interface WaitlistEntry {
+  id: string;
+  restaurantId: string;
+  customerName: string;
+  customerPhone: string;
+  partySize: number;
+  estimatedWaitMinutes: number;
+  status: WaitlistStatus;
+  notes?: string | null;
+  joinedAt: string;
+  notifiedAt?: string | null;
+}
+
+export interface CreateWaitlistDto {
+  customerName: string;
+  customerPhone: string;
+  partySize: number;
+  estimatedWaitMinutes?: number;
+  notes?: string;
+}
+
+export interface VoiceParsedItem {
+  menuItemId: string;
+  name: string;
+  quantity: number;
+  unitPriceCents: number;
+  subtotalCents: number;
+  notes?: string;
+  confidence: number; // 0.0 - 1.0
+}
+
+export interface VoiceOrderDraft {
+  transcript: string;
+  language: 'en' | 'si' | 'ta';
+  tableNumber?: string;
+  items: VoiceParsedItem[];
+  unrecognizedPhrases: string[];
+  suggestedUpsell?: {
+    menuItemId: string;
+    name: string;
+    priceCents: number;
+    reason: string;
+  };
 }
 
 export interface Payment {

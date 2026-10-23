@@ -7,6 +7,8 @@ import type {
   Order,
   KitchenTicket,
   Shift,
+  Reservation,
+  WaitlistEntry,
 } from '../../api/types';
 
 export const MOCK_RESTAURANT: Restaurant = {
@@ -20,7 +22,7 @@ export const MOCK_RESTAURANT: Restaurant = {
 
 export const MOCK_USERS: Record<string, { user: User; pin: string; password: string }> = {
   owner: {
-    pin: '1234',
+    pin: '1111',
     password: 'pass123',
     user: {
       id: 'usr-owner-01',
@@ -31,8 +33,20 @@ export const MOCK_USERS: Record<string, { user: User; pin: string; password: str
       restaurantId: 'rest-cey-101',
     },
   },
-  cashier: {
+  manager: {
     pin: '2222',
+    password: 'pass123',
+    user: {
+      id: 'usr-mgr-01',
+      email: 'manager@ralypto.com',
+      firstName: 'Kamal',
+      lastName: 'Silva',
+      role: 'manager',
+      restaurantId: 'rest-cey-101',
+    },
+  },
+  cashier: {
+    pin: '3333',
     password: 'pass123',
     user: {
       id: 'usr-cashier-01',
@@ -44,7 +58,7 @@ export const MOCK_USERS: Record<string, { user: User; pin: string; password: str
     },
   },
   waiter: {
-    pin: '3333',
+    pin: '4444',
     password: 'pass123',
     user: {
       id: 'usr-waiter-01',
@@ -56,7 +70,7 @@ export const MOCK_USERS: Record<string, { user: User; pin: string; password: str
     },
   },
   kitchen: {
-    pin: '4444',
+    pin: '5555',
     password: 'pass123',
     user: {
       id: 'usr-kitchen-01',
@@ -67,31 +81,44 @@ export const MOCK_USERS: Record<string, { user: User; pin: string; password: str
       restaurantId: 'rest-cey-101',
     },
   },
-  accountant: {
-    pin: '5555',
-    password: 'pass123',
-    user: {
-      id: 'usr-accountant-01',
-      email: 'accountant@ralypto.com',
-      firstName: 'Nimali',
-      lastName: 'Jayasuriya',
-      role: 'accountant',
-      restaurantId: 'rest-cey-101',
-    },
+};
+
+export const MOCK_PLANS: Record<string, { id: string; code: 'basic' | 'standard' | 'premium'; name: string; monthlyPriceCents: number }> = {
+  basic: {
+    id: 'plan-basic',
+    code: 'basic',
+    name: 'Basic Plan',
+    monthlyPriceCents: 1250000,
   },
-  super_admin: {
-    pin: '9999',
-    password: 'pass123',
-    user: {
-      id: 'usr-admin-01',
-      email: 'admin@ralypto.com',
-      firstName: 'Platform',
-      lastName: 'Admin',
-      role: 'super_admin',
-      restaurantId: 'rest-cey-101',
-    },
+  standard: {
+    id: 'plan-standard',
+    code: 'standard',
+    name: 'Standard Plan',
+    monthlyPriceCents: 2450000,
+  },
+  premium: {
+    id: 'plan-premium',
+    code: 'premium',
+    name: 'Premium Plan',
+    monthlyPriceCents: 4950000,
   },
 };
+
+let currentMockPlanCode: 'basic' | 'standard' | 'premium' = 'standard';
+
+export function setMockRestaurantPlan(code: 'basic' | 'standard' | 'premium') {
+  if (MOCK_PLANS[code]) {
+    currentMockPlanCode = code;
+  }
+}
+
+export function getMockRestaurantPlan() {
+  return MOCK_PLANS[currentMockPlanCode] || MOCK_PLANS.standard;
+}
+
+export function getMockPlanCode(): 'basic' | 'standard' | 'premium' {
+  return currentMockPlanCode;
+}
 
 export const MOCK_CATEGORIES: Category[] = [
   {
@@ -136,6 +163,7 @@ export const MOCK_MENU_ITEMS: MenuItem[] = [
     isVeg: false,
     isSpicy: true,
     isAvailable: true,
+    aliases: ['chicken kottu', 'kottu', 'kothu', 'chicken kothu', 'kottu ekak', 'චිකන් කොත්තු', 'කොත්තු', 'கொத்து'],
     modifiers: [
       { id: 'mod-extra-cheese', name: 'Add Extra Melted Cheese', priceDeltaCents: 35000 },
       { id: 'mod-extra-roti', name: 'Large Double Portion', priceDeltaCents: 45000 },
@@ -152,6 +180,7 @@ export const MOCK_MENU_ITEMS: MenuItem[] = [
     isVeg: false,
     isSpicy: true,
     isAvailable: true,
+    aliases: ['cheese kottu', 'special cheese kottu', 'cheese kothu', 'චීස් කොත්තු', 'சீஸ் கொத்து'],
   },
   {
     id: 'item-fried-rice-sea',
@@ -164,6 +193,7 @@ export const MOCK_MENU_ITEMS: MenuItem[] = [
     isVeg: false,
     isSpicy: true,
     isAvailable: true,
+    aliases: ['seafood fried rice', 'seafood rice', 'seafood bath', 'සීෆුඩ් රයිස්', 'கடல் உணவு சாதம்'],
   },
   {
     id: 'item-fried-rice-veg',
@@ -176,6 +206,7 @@ export const MOCK_MENU_ITEMS: MenuItem[] = [
     isVeg: true,
     isSpicy: false,
     isAvailable: true,
+    aliases: ['vegetable fried rice', 'veg fried rice', 'veg rice', 'vegetable rice', 'එළවළු බත්', 'වෙජි රයිස්', 'காய்கறி சாதம்'],
   },
   {
     id: 'item-starter-hbc',
@@ -188,6 +219,7 @@ export const MOCK_MENU_ITEMS: MenuItem[] = [
     isVeg: false,
     isSpicy: true,
     isAvailable: true,
+    aliases: ['hot butter cuttlefish', 'hbc', 'cuttlefish', 'crispy cuttlefish', 'දැල්ලෝ', 'ஹாட் பட்டர் கணவாய்'],
   },
   {
     id: 'item-starter-dev-chick',
@@ -200,6 +232,7 @@ export const MOCK_MENU_ITEMS: MenuItem[] = [
     isVeg: false,
     isSpicy: true,
     isAvailable: true,
+    aliases: ['devilled chicken', 'devil chicken', 'chilli chicken', 'චිකන් ඩෙවිල්', 'டெவில்ட் சிக்கன்'],
   },
   {
     id: 'item-bev-lime-juice',
@@ -212,6 +245,7 @@ export const MOCK_MENU_ITEMS: MenuItem[] = [
     isVeg: true,
     isSpicy: false,
     isAvailable: true,
+    aliases: ['lime juice', 'fresh lime juice', 'lime drink', 'දෙහි ජූස්', 'දෙහි යුෂ', 'எலுமிச்சை சாறு'],
   },
   {
     id: 'item-bev-falooda',
@@ -224,6 +258,7 @@ export const MOCK_MENU_ITEMS: MenuItem[] = [
     isVeg: true,
     isSpicy: false,
     isAvailable: true,
+    aliases: ['falooda', 'royal falooda', 'ice cream falooda', 'ෆලූඩා', 'பலுடா'],
   },
   {
     id: 'item-dessert-watalappan',
@@ -236,6 +271,7 @@ export const MOCK_MENU_ITEMS: MenuItem[] = [
     isVeg: true,
     isSpicy: false,
     isAvailable: true,
+    aliases: ['watalappan', 'watalappam', 'jaggery pudding', 'වටලප්පන්', 'வட்டலப்பம்'],
   },
 ];
 
@@ -376,3 +412,115 @@ export const MOCK_SHIFT: Shift = {
   expectedCashCents: 15500000, // LKR 155,000.00
   status: 'open',
 };
+
+// Initial Mock Reservations
+export let MOCK_RESERVATIONS: Reservation[] = [
+  {
+    id: 'res-001',
+    restaurantId: 'rest-cey-101',
+    customerName: 'Nimal Senanayake',
+    customerPhone: '+94 77 123 4567',
+    customerEmail: 'nimal@senanayake.lk',
+    partySize: 4,
+    reservationTime: new Date(Date.now() + 30 * 60000).toISOString(), // in 30 mins
+    durationMinutes: 90,
+    tableId: 'table-004',
+    tableNumber: 'Table 4',
+    status: 'confirmed',
+    source: 'voice_agent',
+    specialRequests: 'Birthday celebration, prefers quiet booth',
+    createdAt: new Date(Date.now() - 120 * 60000).toISOString(),
+  },
+  {
+    id: 'res-002',
+    restaurantId: 'rest-cey-101',
+    customerName: 'Fatima Razik',
+    customerPhone: '+94 71 987 6543',
+    customerEmail: 'fatima@razik.org',
+    partySize: 2,
+    reservationTime: new Date(Date.now() + 90 * 60000).toISOString(), // in 1.5 hours
+    durationMinutes: 60,
+    tableId: 'table-003',
+    tableNumber: 'Table 3',
+    status: 'confirmed',
+    source: 'whatsapp',
+    specialRequests: 'Window seat if available, strictly halal items',
+    createdAt: new Date(Date.now() - 180 * 60000).toISOString(),
+  },
+  {
+    id: 'res-003',
+    restaurantId: 'rest-cey-101',
+    customerName: 'Samantha Gunasekera',
+    customerPhone: '+94 76 555 4321',
+    customerEmail: 'sam@gcorporate.lk',
+    partySize: 6,
+    reservationTime: new Date(Date.now() - 45 * 60000).toISOString(), // 45 mins ago
+    durationMinutes: 120,
+    tableId: 'table-005',
+    tableNumber: 'Table 5',
+    status: 'seated',
+    source: 'web',
+    specialRequests: 'Client dinner, high chairs for 1 toddler',
+    createdAt: new Date(Date.now() - 300 * 60000).toISOString(),
+  },
+  {
+    id: 'res-004',
+    restaurantId: 'rest-cey-101',
+    customerName: 'Rohan Jayasuriya',
+    customerPhone: '+94 70 333 8899',
+    customerEmail: 'rohan.j@gmail.com',
+    partySize: 3,
+    reservationTime: new Date(Date.now() + 180 * 60000).toISOString(),
+    durationMinutes: 90,
+    tableId: null,
+    tableNumber: null,
+    status: 'pending',
+    source: 'voice_agent',
+    specialRequests: 'Asked via Voice Booking Agent: "Table for 3 around 8pm"',
+    createdAt: new Date(Date.now() - 15 * 60000).toISOString(),
+  },
+];
+
+// Initial Mock Waitlist
+export let MOCK_WAITLIST: WaitlistEntry[] = [
+  {
+    id: 'wait-001',
+    restaurantId: 'rest-cey-101',
+    customerName: 'Dilshan Weerasinghe',
+    customerPhone: '+94 77 999 1122',
+    partySize: 2,
+    estimatedWaitMinutes: 15,
+    status: 'waiting',
+    notes: 'Walk-in, waiting outside near fountain',
+    joinedAt: new Date(Date.now() - 10 * 60000).toISOString(),
+  },
+  {
+    id: 'wait-002',
+    restaurantId: 'rest-cey-101',
+    customerName: 'Priya Sundaram',
+    customerPhone: '+94 75 444 3322',
+    partySize: 4,
+    estimatedWaitMinutes: 25,
+    status: 'notified',
+    notes: 'Notified via SMS, walking over from car park',
+    joinedAt: new Date(Date.now() - 22 * 60000).toISOString(),
+    notifiedAt: new Date(Date.now() - 2 * 60000).toISOString(),
+  },
+];
+
+export function getMockReservations() {
+  return MOCK_RESERVATIONS;
+}
+
+export function setMockReservations(res: Reservation[]) {
+  MOCK_RESERVATIONS = res;
+}
+
+export function getMockWaitlist() {
+  return MOCK_WAITLIST;
+}
+
+export function setMockWaitlist(list: WaitlistEntry[]) {
+  MOCK_WAITLIST = list;
+}
+

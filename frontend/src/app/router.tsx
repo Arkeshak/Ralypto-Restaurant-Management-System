@@ -11,6 +11,7 @@ const LoginPage = lazy(() => import("../features/auth/LoginPage"));
 const PinLoginPage = lazy(() => import("../features/auth/PinLoginPage"));
 const TablesPage = lazy(() => import("../features/pos/TablesPage"));
 const PosPage = lazy(() => import("../features/pos/PosPage"));
+const OrderHistoryPage = lazy(() => import("../features/orders/OrderHistoryPage"));
 const KitchenPage = lazy(() => import("../features/kitchen/KitchenPage"));
 const WaiterPage = lazy(() => import("../features/waiter/WaiterPage"));
 const QrMenuPage = lazy(() => import("../features/qr-menu/QrMenuPage"));
@@ -23,6 +24,7 @@ const StaffPage = lazy(() => import("../features/staff/StaffPage"));
 const AiAssistantPage = lazy(() => import("../features/ai/AiAssistantPage"));
 const SubscriptionPage = lazy(() => import("../features/subscription/SubscriptionPage"));
 const UpgradePage = lazy(() => import("../features/subscription/UpgradePage"));
+const ReservationsPage = lazy(() => import("../features/reservations/ReservationsPage"));
 const SettingsPage = lazy(() => import("../features/settings/SettingsPage"));
 const AdminPage = lazy(() => import("../features/admin/AdminPage"));
 const OnboardingPage = lazy(() => import("../features/onboarding/OnboardingPage"));
@@ -98,6 +100,16 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: "reservations",
+        element: (
+          <RequireRole allowedRoles={["owner", "manager", "cashier", "waiter", "super_admin"]}>
+            <Suspense fallback={<PageLoading />}>
+              <ReservationsPage />
+            </Suspense>
+          </RequireRole>
+        ),
+      },
+      {
         path: "billing",
         element: (
           <RequireRole allowedRoles={["owner", "manager", "cashier", "super_admin"]}>
@@ -110,6 +122,16 @@ export const router = createBrowserRouter([
       {
         path: "pos",
         element: <Navigate to="/billing" replace />,
+      },
+      {
+        path: "orders",
+        element: (
+          <RequireRole allowedRoles={["owner", "manager", "cashier", "super_admin"]}>
+            <Suspense fallback={<PageLoading />}>
+              <OrderHistoryPage />
+            </Suspense>
+          </RequireRole>
+        ),
       },
       {
         path: "kitchen",
@@ -227,8 +249,8 @@ export const router = createBrowserRouter([
           <RequireRole allowedRoles={["owner", "manager", "super_admin"]}>
             <RequirePlanFeature
               feature="ai_assistant"
-              featureTitle="Gemini AI Hospitality Advisor"
-              minPlanName="Premium Plan"
+              featureTitle="Ralypto AI Assistant & Analytics"
+              minPlanName="Standard Plan"
             >
               <Suspense fallback={<PageLoading />}>
                 <AiAssistantPage />

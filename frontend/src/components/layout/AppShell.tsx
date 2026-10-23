@@ -1,14 +1,10 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Lock,
-  LifeBuoy,
   LogOut,
   Globe,
-  PlayCircle,
-  MessageCircle,
-  X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { navItems } from "./navItems";
@@ -19,15 +15,17 @@ import { OfflineBadge } from "@/components/common/OfflineBadge";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { useUiStore } from "@/stores/ui.store";
 import { useTranslation } from "react-i18next";
+import { SubscriptionBanner } from "./SubscriptionBanner";
+import { FloatingHelpButton } from "@/components/common/FloatingHelpButton";
+import { FirstLoginWalkthrough } from "@/components/common/FirstLoginWalkthrough";
 
 export function AppShell() {
-  const { user, restaurant, logout, plan } = useAuth();
+  const { user, restaurant, plan, logout } = useAuth();
   const hasFeature = useFeature();
   const navigate = useNavigate();
   const { i18n } = useTranslation();
   const { activeManagerPinModal, closeManagerPinModal } = useUiStore();
 
-  const [showHelp, setShowHelp] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
 
   // Filter items visible to this role
@@ -42,10 +40,6 @@ export function AppShell() {
     logout();
     navigate("/login");
   };
-
-  // Demo banners (can be triggered by plan status)
-  const isGracePeriod = false;
-  const isReadOnly = false;
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-bg text-text">
@@ -114,17 +108,8 @@ export function AppShell() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {/* Banner: Grace period or Read-only mode */}
-        {isReadOnly && (
-          <div className="bg-danger px-4 py-2 text-center text-sm font-semibold text-white">
-            Subscription expired. Your account is in Read-Only mode. Please renew to resume billing.
-          </div>
-        )}
-        {isGracePeriod && !isReadOnly && (
-          <div className="bg-warning-soft px-4 py-2 text-center text-sm font-medium text-warning border-b border-warning/20">
-            Payment pending. You have 3 days left in grace period before billing is paused.
-          </div>
-        )}
+        {/* Subscription Status Banners (Grace period, Read-Only, Dev Mode Switcher) */}
+        <SubscriptionBanner />
 
         {/* Top bar */}
         <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-surface/80 px-4 backdrop-blur-xl md:px-6 z-20">
@@ -220,70 +205,11 @@ export function AppShell() {
         </nav>
       </div>
 
-      {/* Floating Help Button */}
-      <div className="fixed bottom-20 right-4 z-30 md:bottom-6 md:right-6">
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowHelp(!showHelp)}
-          aria-label="Help & Support"
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-brand text-surface shadow-lg hover:bg-brand-hover transition-colors"
-        >
-          <LifeBuoy className="h-6 w-6" strokeWidth={1.75} />
-        </motion.button>
+      {/* Floating Help Button on every screen */}
+      <FloatingHelpButton />
 
-        {/* Help Panel Popup */}
-        <AnimatePresence>
-          {showHelp && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 10 }}
-              className="absolute bottom-14 right-0 w-72 rounded-card border border-border bg-surface p-4 shadow-2xl backdrop-blur-xl"
-            >
-              <div className="flex items-center justify-between pb-3 border-b border-border/40">
-                <span className="font-semibold text-text">Instant Help</span>
-                <button
-                  onClick={() => setShowHelp(false)}
-                  className="rounded-full p-1 text-muted hover:text-text"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="mt-3 flex flex-col gap-2">
-                <button
-                  onClick={() => {
-                    setShowHelp(false);
-                    window.open("https://youtube.com", "_blank");
-                  }}
-                  className="flex items-center gap-3 rounded-btn p-2.5 text-left text-sm font-medium hover:bg-bg transition-colors"
-                >
-                  <PlayCircle className="h-5 w-5 text-brand" />
-                  <div>
-                    <div className="text-text font-semibold">1-minute guide</div>
-                    <div className="text-xs text-muted">Watch quick video tutorial</div>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setShowHelp(false);
-                    const text = encodeURIComponent("Hi Ralypto support, I need assistance with our restaurant POS.");
-                    window.open(`https://wa.me/94770000000?text=${text}`, "_blank");
-                  }}
-                  className="flex items-center gap-3 rounded-btn p-2.5 text-left text-sm font-medium hover:bg-bg transition-colors"
-                >
-                  <MessageCircle className="h-5 w-5 text-success" />
-                  <div>
-                    <div className="text-text font-semibold">WhatsApp us</div>
-                    <div className="text-xs text-muted">Direct staff assistance</div>
-                  </div>
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      {/* First-Login Walkthrough Modal */}
+      <FirstLoginWalkthrough />
 
       {/* Global Manager PIN Modal */}
       <ConfirmDialog

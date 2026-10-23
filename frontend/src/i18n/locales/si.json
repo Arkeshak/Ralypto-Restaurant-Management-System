@@ -13,7 +13,9 @@
     "subscription": "දායකත්වය සහ බිල්පත්",
     "settings": "සැකසුම්",
     "admin": "ප්‍රධාන පරිපාලක",
-    "dashboard": "උපකරණ පුවරුව"
+    "dashboard": "උපකරණ පුවරුව",
+    "orders": "ඇණවුම් ඉතිහාසය",
+    "reservations": "වෙන්කිරීම් සහ පොරොත්තු ලේඛනය"
   },
   "auth": {
     "title": "Ralypto වෙත පිවිසෙන්න",
@@ -85,6 +87,48 @@
     "basic": "Basic ප්ලෑන් එක",
     "standard": "Standard ප්ලෑන් එක",
     "premium": "Premium ප්ලෑන් එක",
-    "switcherTitle": "ප්ලෑන් එක මාරු කරන්න (Dev Mode)"
+    "switcherTitle": "දායකත්ව සැලසුම්"
+  },
+  "receipt": {
+    "billNo": "බිල්පත් අංකය #{{number}}",
+    "thankYou": "අප සමඟ ආහාර ගැනීම පිළිබඳව ඔබට ස්තූතියි!",
+    "printBill": "80mm බිල මුද්‍රණය කරන්න",
+    "whatsappBill": "WhatsApp බිල",
+    "smsBill": "SMS බිල",
+    "done": "අවසන්"
+  },
+  "tables": {
+    "moveTitle": "මේසය මාරු කරන්න T{{number}}",
+    "moveDesc": "මෙම ඇණවුම මාරු කිරීමට හිස් මේසයක් තෝරන්න.",
+    "mergeTitle": "මේස එකතු කරන්න T{{number}}",
+    "mergeDesc": "වෙනත් කාර්යබහුල මේසයක් සමඟ එකතු කරන්න.",
+    "selectFree": "හිස් මේසයක් තෝරන්න...",
+    "selectBusy": "ක්‍රියාකාරී මේසයක් තෝරන්න...",
+    "combinedPreview": "ඒකාබද්ධ ඇණවුමේ පෙරදසුන",
+    "newTotal": "නව ඒකාබද්ධ මුළු මුදල",
+    "managerPin": "කළමනාකරු PIN (අවශ්‍ය නම්)"
+  },
+  "kitchen": {
+    "kdsTitle": "කුස්සියේ ප්‍රදර්ශන පද්ධතිය (KDS)",
+    "newTickets": "නව ඇණවුම්",
+    "preparing": "සකසමින් පවතී",
+    "ready": "පිළිගැන්වීමට සූදානම්",
+    "advance": "ඉදිරියට",
+    "stationAll": "සියලුම ස්ථාන",
+    "stationKitchen": "කුස්සිය පමණි",
+    "stationBar": "බාර් එක පමණි",
+    "muteSound": "ශබ්දය අක්‍රිය කරන්න"
+  },
+  "reports": {
+    "reportsTitle": "වාර්තා සහ විශ්ලේෂණ",
+    "todaySales": "අද දින විකුණුම්",
+    "ordersCount": "මුළු ඇණවුම්",
+    "activeTables": "ක්‍රියාකාරී මේස",
+    "averageTicket": "සාමාන්‍ය බිල්පත",
+    "salesByHour": "පැය අනුව විකුණුම්",
+    "topDishes": "ප්‍රමුඛතම කෑම 5",
+    "exportCsv": "CSV බාගන්න",
+    "printReport": "වාර්තාව මුද්‍රණය කරන්න",
+    "aiAdvisorTitle": "AI ආගන්තුක සත්කාර උපදේශක"
   }
 }

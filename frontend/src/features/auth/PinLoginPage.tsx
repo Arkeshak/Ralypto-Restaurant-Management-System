@@ -8,7 +8,11 @@ import { useTranslation } from "react-i18next";
 import { Delete, Mail, Store, Globe } from "lucide-react";
 
 export const PinLoginPage: React.FC = () => {
-  const [restaurantCode, setRestaurantCode] = useState("CEY101");
+  const [restaurantCode, setRestaurantCode] = useState(
+    import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === "true"
+      ? "CEY101"
+      : (localStorage.getItem("ralypto_rest_code") || "")
+  );
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -43,6 +47,10 @@ export const PinLoginPage: React.FC = () => {
     setError("");
 
     try {
+      if (restaurantCode) {
+        localStorage.setItem("ralypto_rest_code", restaurantCode.toUpperCase());
+      }
+
       const res = await authApi.pinLogin({
         restaurantCode,
         pin: finalPin,
@@ -55,6 +63,9 @@ export const PinLoginPage: React.FC = () => {
         plan: res.plan,
         featureFlags: res.featureFlags,
       });
+
+      // Prefetch POS route after login
+      import("@/features/pos/PosPage").catch(() => {});
 
       const landingRoute = getRoleLandingRoute(res.user.role);
       navigate(landingRoute, { replace: true });
@@ -189,15 +200,18 @@ export const PinLoginPage: React.FC = () => {
           </Link>
         </div>
 
-        {/* Demo PIN hints */}
-        <div className="mt-4 p-2.5 rounded-xl bg-bg border border-border/60 text-[11px] text-muted">
-          <p className="font-semibold text-text mb-1">Demo PINs (Code: CEY101):</p>
-          <div className="flex justify-around">
-            <span>Cashier: <b className="text-text">2222</b></span>
-            <span>Waiter: <b className="text-text">3333</b></span>
-            <span>Kitchen: <b className="text-text">4444</b></span>
+        {/* Demo PIN hints (Dev Mock only) */}
+        {import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === "true" && (
+          <div className="mt-4 p-2.5 rounded-xl bg-bg border border-border/60 text-[11px] text-muted">
+            <p className="font-semibold text-text mb-1">Demo PINs (Code: CEY101):</p>
+            <div className="grid grid-cols-2 gap-1 text-center">
+              <span>Owner: <b className="text-text">1111</b></span>
+              <span>Manager: <b className="text-text">2222</b></span>
+              <span>Cashier: <b className="text-text">3333</b></span>
+              <span>Waiter: <b className="text-text">4444</b></span>
+            </div>
           </div>
-        </div>
+        )}
       </motion.div>
     </div>
   );
