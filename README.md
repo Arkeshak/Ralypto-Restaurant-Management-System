@@ -16,7 +16,7 @@ Ralypto is commercialized as a tiered monthly subscription (**Basic**, **Standar
 | Role | Engineer | Scope |
 | :--- | :--- | :--- |
 | **Frontend Lead** | **Arkesh** | Single-page PWA app (`frontend/`), UI design system, state, offline storage, role-based views |
-| **Backend Lead** | **Backend Developer** | Multi-tenant API (`backend/`), database migrations, real-time WebSockets, auth, AI integrations |
+| **Backend Lead** | **Vinith** | Multi-tenant API (`backend/`), database migrations, real-time WebSockets, auth, AI integrations |
 
 ---
 
