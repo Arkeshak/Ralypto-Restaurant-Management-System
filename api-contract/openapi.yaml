@@ -1,0 +1,1711 @@
+openapi: 3.0.3
+info:
+  title: Ralypto Restaurant Management API
+  version: 1.0.0
+  license:
+    name: Proprietary
+  description: |
+    Core REST API specification for Ralypto - an all-in-one restaurant management platform.
+    Provides endpoints for POS billing, kitchen display, waiter ordering, QR self-order, shifts, and reports.
+servers:
+  - url: http://localhost:4000/api/v1
+    description: Local Development Server
+
+paths:
+  # ============================================================================
+  # Authentication Endpoints
+  # ============================================================================
+  /auth/login:
+    post:
+      operationId: loginUser
+      summary: User Login with Email & Password
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: owner@ralypto.com
+                password:
+                  type: string
+                  example: pass123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/pin-login:
+    post:
+      operationId: pinLoginUser
+      summary: Fast Terminal Login with 4-Digit PIN
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [restaurantCode, pin]
+              properties:
+                restaurantCode:
+                  type: string
+                  example: CEY101
+                pin:
+                  type: string
+                  pattern: '^[0-9]{4}$'
+                  example: '2222'
+      responses:
+        '200':
+          description: PIN authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      operationId: refreshToken
+      summary: Refresh Access Token
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/me:
+    get:
+      operationId: getCurrentUserSession
+      summary: Get Current User Profile & Tenant Feature Flags
+      tags: [Auth]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Authenticated user session
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user, restaurant, plan, featureFlags]
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  restaurant:
+                    $ref: '#/components/schemas/Restaurant'
+                  plan:
+                    $ref: '#/components/schemas/Plan'
+                  featureFlags:
+                    $ref: '#/components/schemas/FeatureFlags'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ============================================================================
+  # Menu Catalog Endpoints
+  # ============================================================================
+  /menu/categories:
+    get:
+      operationId: listMenuCategories
+      summary: List Menu Categories
+      tags: [Menu]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: createMenuCategory
+      summary: Create Category
+      tags: [Menu]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, targetStation]
+              properties:
+                name:
+                  type: string
+                  example: Rice & Kottu
+                icon:
+                  type: string
+                  example: Utensils
+                targetStation:
+                  type: string
+                  enum: [kitchen, bar]
+                  example: kitchen
+      responses:
+        '201':
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /menu/items:
+    get:
+      operationId: listMenuItems
+      summary: List Menu Items
+      tags: [Menu]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: categoryId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of menu items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MenuItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: createMenuItem
+      summary: Create Menu Item
+      tags: [Menu]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [categoryId, name, priceCents]
+              properties:
+                categoryId:
+                  type: string
+                name:
+                  type: string
+                  example: Chicken Kottu
+                description:
+                  type: string
+                  example: Sri Lankan shredded flatbread stir-fried with chicken, egg and spices
+                priceCents:
+                  type: integer
+                  example: 145000
+                costCents:
+                  type: integer
+                  example: 62000
+                isVeg:
+                  type: boolean
+                  example: false
+                isSpicy:
+                  type: boolean
+                  example: true
+                isAvailable:
+                  type: boolean
+                  example: true
+                modifiers:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Modifier'
+      responses:
+        '201':
+          description: Item created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ============================================================================
+  # Table Management Endpoints
+  # ============================================================================
+  /tables:
+    get:
+      operationId: listDiningTables
+      summary: List All Dining Tables
+      tags: [Tables]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of tables
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Table'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: createDiningTable
+      summary: Add New Table
+      tags: [Tables]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [number, capacity]
+              properties:
+                number:
+                  type: string
+                  example: Table 5
+                areaName:
+                  type: string
+                  example: Main Hall
+                capacity:
+                  type: integer
+                  example: 4
+      responses:
+        '201':
+          description: Table created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Table'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /tables/{id}/status:
+    patch:
+      operationId: updateTableStatus
+      summary: Update Table Status
+      tags: [Tables]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [available, occupied, billed, reserved, cleaning]
+                  example: occupied
+      responses:
+        '200':
+          description: Table status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Table'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================================================
+  # Orders Endpoints
+  # ============================================================================
+  /orders:
+    get:
+      operationId: listOrders
+      summary: List Active Orders
+      tags: [Orders]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: tableId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: createOrder
+      summary: Create New Order
+      tags: [Orders]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orderType]
+              properties:
+                tableId:
+                  type: string
+                  example: table-005
+                orderType:
+                  type: string
+                  enum: [dine_in, takeaway, delivery, qr_self_order]
+                  example: dine_in
+                clientCreatedUuid:
+                  type: string
+                  example: 7b84cf22-90e6-42bb-b0f3-855c5df6f50b
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required: [menuItemId, quantity]
+                    properties:
+                      menuItemId:
+                        type: string
+                        example: item-kottu-01
+                      quantity:
+                        type: integer
+                        example: 2
+                      notes:
+                        type: string
+                        example: Less spicy please
+                      modifiers:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            modifierId:
+                              type: string
+                            name:
+                              type: string
+                            priceDeltaCents:
+                              type: integer
+      responses:
+        '201':
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /orders/{id}:
+    get:
+      operationId: getOrderById
+      summary: Get Order Details
+      tags: [Orders]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /orders/{id}/items:
+    post:
+      operationId: addOrderItems
+      summary: Add Items to Existing Order
+      tags: [Orders]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required: [menuItemId, quantity]
+                    properties:
+                      menuItemId:
+                        type: string
+                      quantity:
+                        type: integer
+                      notes:
+                        type: string
+      responses:
+        '200':
+          description: Items added to order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /orders/{id}/send-to-kitchen:
+    post:
+      operationId: sendOrderToKitchen
+      summary: Fire Pending Items to Kitchen / Bar KDS
+      tags: [Orders]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Order items fired to kitchen
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /orders/{id}/request-bill:
+    post:
+      operationId: requestOrderBill
+      summary: Request Bill & Update Table Status to Billed
+      tags: [Orders]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Bill generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /orders/{id}/pay:
+    post:
+      operationId: payOrder
+      summary: Settle Order Payment
+      tags: [Orders]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amountCents, paymentMethod]
+              properties:
+                amountCents:
+                  type: integer
+                  example: 379500
+                paymentMethod:
+                  type: string
+                  enum: [cash, card, qr_code, online_transfer]
+                  example: cash
+                tenderedCents:
+                  type: integer
+                  example: 400000
+                changeCents:
+                  type: integer
+                  example: 20500
+      responses:
+        '200':
+          description: Payment successful and order marked completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /orders/{id}/void:
+    post:
+      operationId: voidOrder
+      summary: Void Order (Requires Manager PIN Authorization)
+      tags: [Orders]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [managerPin, reason]
+              properties:
+                managerPin:
+                  type: string
+                  pattern: '^[0-9]{4}$'
+                  example: '1234'
+                reason:
+                  type: string
+                  example: Customer left emergency before food cooked
+      responses:
+        '200':
+          description: Order voided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /orders/{id}/split:
+    post:
+      operationId: splitOrderBill
+      summary: Split Bill by Items or Headcount
+      tags: [Orders]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [splitType]
+              properties:
+                splitType:
+                  type: string
+                  enum: [equal, by_items]
+                  example: equal
+                headCount:
+                  type: integer
+                  example: 2
+                itemSplits:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      shareName:
+                        type: string
+                      orderItemIds:
+                        type: array
+                        items:
+                          type: string
+      responses:
+        '200':
+          description: Split bill shares calculated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orderId:
+                    type: string
+                  splits:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        shareId:
+                          type: string
+                        shareName:
+                          type: string
+                        amountCents:
+                          type: integer
+                        isPaid:
+                          type: boolean
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================================================
+  # Kitchen Display System (KDS)
+  # ============================================================================
+  /kitchen/orders:
+    get:
+      operationId: getKitchenOrders
+      summary: Get Live Kitchen / Bar Prep Tickets
+      tags: [Kitchen]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: station
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [kitchen, bar]
+            example: kitchen
+      responses:
+        '200':
+          description: Active kitchen tickets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/KitchenTicket'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /kitchen/tickets/{id}/status:
+    patch:
+      operationId: updateKitchenTicketStatus
+      summary: Update Kitchen Ticket Status
+      tags: [Kitchen]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [new, preparing, ready, collected]
+                  example: ready
+      responses:
+        '200':
+          description: Ticket status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KitchenTicket'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================================================
+  # Cashier Shift Management
+  # ============================================================================
+  /shifts/current:
+    get:
+      operationId: getCurrentShift
+      summary: Get Current Active Cashier Shift
+      tags: [Shifts]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current shift details or null if no shift is open
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shift'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /shifts/open:
+    post:
+      operationId: openCashierShift
+      summary: Open New Cashier Shift
+      tags: [Shifts]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [openingFloatCents]
+              properties:
+                openingFloatCents:
+                  type: integer
+                  example: 1000000
+                notes:
+                  type: string
+                  example: Morning breakfast shift register #1
+      responses:
+        '201':
+          description: Shift opened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shift'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /shifts/close:
+    post:
+      operationId: closeCashierShift
+      summary: Close Current Cashier Shift & Settle Drawer
+      tags: [Shifts]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [closingCashCents]
+              properties:
+                closingCashCents:
+                  type: integer
+                  example: 3500000
+                notes:
+                  type: string
+                  example: Drawer balanced perfectly
+      responses:
+        '200':
+          description: Shift closed and Z-Report generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shift'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ============================================================================
+  # Public QR Menu & Self-Order (Zero Auth Required)
+  # ============================================================================
+  /public/menu/{restaurantCode}/{tableNumber}:
+    get:
+      operationId: getPublicTableMenu
+      summary: Get Public Menu for Table QR Scan
+      tags: [Public QR]
+      security: []
+      parameters:
+        - name: restaurantCode
+          in: path
+          required: true
+          schema:
+            type: string
+            example: CEY101
+        - name: tableNumber
+          in: path
+          required: true
+          schema:
+            type: string
+            example: '5'
+      responses:
+        '200':
+          description: Public restaurant menu catalog and table status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  restaurant:
+                    $ref: '#/components/schemas/Restaurant'
+                  table:
+                    $ref: '#/components/schemas/Table'
+                  categories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MenuItem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /public/orders:
+    post:
+      operationId: createPublicSelfOrder
+      summary: Place Customer Self-Order from Table QR
+      tags: [Public QR]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [restaurantCode, tableNumber, items]
+              properties:
+                restaurantCode:
+                  type: string
+                  example: CEY101
+                tableNumber:
+                  type: string
+                  example: '5'
+                customerName:
+                  type: string
+                  example: Kasun
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required: [menuItemId, quantity]
+                    properties:
+                      menuItemId:
+                        type: string
+                      quantity:
+                        type: integer
+                      notes:
+                        type: string
+      responses:
+        '201':
+          description: Self-order placed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /public/call-waiter:
+    post:
+      operationId: callWaiterToTable
+      summary: Customer Calls Waiter to Table
+      tags: [Public QR]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [restaurantCode, tableNumber]
+              properties:
+                restaurantCode:
+                  type: string
+                  example: CEY101
+                tableNumber:
+                  type: string
+                  example: '5'
+                requestType:
+                  type: string
+                  enum: [service, bill, water, cutlery]
+                  example: bill
+      responses:
+        '200':
+          description: Waiter notified
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Waiter has been notified and is coming to Table 5
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================================================
+  # SaaS Subscription Management
+  # ============================================================================
+  /subscription:
+    get:
+      operationId: getCurrentSubscription
+      summary: Get Current Restaurant Subscription
+      tags: [Subscription]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current subscription details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subscriptionId:
+                    type: string
+                    example: sub-001
+                  status:
+                    type: string
+                    example: active
+                  currentPlan:
+                    $ref: '#/components/schemas/Plan'
+                  currentPeriodEnd:
+                    type: string
+                    format: date-time
+                    example: '2026-11-01T00:00:00Z'
+                  featureFlags:
+                    $ref: '#/components/schemas/FeatureFlags'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /subscription/invoices:
+    get:
+      operationId: listSubscriptionInvoices
+      summary: Get Subscription Invoices
+      tags: [Subscription]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of invoices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      example: inv-2026-10
+                    invoiceNumber:
+                      type: string
+                      example: INV-RAL-1002
+                    amountCents:
+                      type: integer
+                      example: 2450000
+                    status:
+                      type: string
+                      example: paid
+                    dueDate:
+                      type: string
+                      example: '2026-10-01'
+                    paidAt:
+                      type: string
+                      example: '2026-10-02T10:30:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ============================================================================
+  # Analytical Reports Endpoints
+  # ============================================================================
+  /reports/dashboard:
+    get:
+      operationId: getDashboardReport
+      summary: Get Executive KPI Dashboard
+      tags: [Reports]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Real-time dashboard KPI metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  todaySalesCents:
+                    type: integer
+                    example: 28450000
+                  ordersCount:
+                    type: integer
+                    example: 76
+                  activeTables:
+                    type: integer
+                    example: 5
+                  averageTicketCents:
+                    type: integer
+                    example: 374342
+                  recentOrders:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /reports/sales:
+    get:
+      operationId: getSalesReport
+      summary: Get Sales Report by Date Range
+      tags: [Reports]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Sales breakdown
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalSalesCents:
+                    type: integer
+                    example: 450200000
+                  totalOrders:
+                    type: integer
+                    example: 1240
+                  paymentBreakdown:
+                    type: object
+                    properties:
+                      cashCents:
+                        type: integer
+                        example: 210000000
+                      cardCents:
+                        type: integer
+                        example: 240200000
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+# ==============================================================================
+# Components & Reusable Schemas
+# ==============================================================================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    BadRequest:
+      description: Bad request - Missing or invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/StandardError'
+    Unauthorized:
+      description: Unauthorized - Valid JWT Bearer token required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/StandardError'
+    Forbidden:
+      description: Forbidden - Insufficient role or invalid manager PIN
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/StandardError'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/StandardError'
+
+  schemas:
+    StandardError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: FORBIDDEN
+        message:
+          type: string
+          example: Invalid manager PIN authorization
+        details:
+          type: object
+          nullable: true
+
+    User:
+      type: object
+      required: [id, email, firstName, lastName, role]
+      properties:
+        id:
+          type: string
+          example: user-owner-01
+        email:
+          type: string
+          example: owner@ralypto.com
+        firstName:
+          type: string
+          example: Arkesh
+        lastName:
+          type: string
+          example: Fernando
+        role:
+          type: string
+          enum: [super_admin, owner, manager, cashier, waiter, kitchen, accountant]
+          example: owner
+        restaurantId:
+          type: string
+          example: rest-cey-101
+
+    Restaurant:
+      type: object
+      required: [id, name, code, currency]
+      properties:
+        id:
+          type: string
+          example: rest-cey-101
+        name:
+          type: string
+          example: Ceylon Spice Bistro
+        code:
+          type: string
+          example: CEY101
+        currency:
+          type: string
+          example: LKR
+        taxRate:
+          type: number
+          example: 0.00
+        serviceChargeRate:
+          type: number
+          example: 0.10
+
+    Plan:
+      type: object
+      required: [id, code, name, monthlyPriceCents]
+      properties:
+        id:
+          type: string
+          example: plan-std
+        code:
+          type: string
+          enum: [basic, standard, premium]
+          example: standard
+        name:
+          type: string
+          example: Standard Plan
+        monthlyPriceCents:
+          type: integer
+          example: 2450000
+
+    FeatureFlags:
+      type: object
+      required:
+        - pos_billing
+        - kitchen_display
+        - qr_menu_view
+        - qr_self_order
+        - waiter_app
+        - inventory_management
+        - delivery_integration
+        - advanced_reports
+        - accounting_ledger
+        - hr_payroll
+        - multi_branch
+        - ai_assistant
+        - ai_stock_prediction
+        - ai_menu_builder
+      properties:
+        pos_billing:
+          type: boolean
+          example: true
+        kitchen_display:
+          type: boolean
+          example: true
+        qr_menu_view:
+          type: boolean
+          example: true
+        qr_self_order:
+          type: boolean
+          example: true
+        waiter_app:
+          type: boolean
+          example: true
+        inventory_management:
+          type: boolean
+          example: true
+        delivery_integration:
+          type: boolean
+          example: true
+        advanced_reports:
+          type: boolean
+          example: true
+        accounting_ledger:
+          type: boolean
+          example: false
+        hr_payroll:
+          type: boolean
+          example: false
+        multi_branch:
+          type: boolean
+          example: false
+        ai_assistant:
+          type: boolean
+          example: false
+        ai_stock_prediction:
+          type: boolean
+          example: false
+        ai_menu_builder:
+          type: boolean
+          example: false
+
+    AuthResponse:
+      type: object
+      required: [accessToken, refreshToken, user, restaurant, plan, featureFlags]
+      properties:
+        accessToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI...
+        refreshToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI...
+        user:
+          $ref: '#/components/schemas/User'
+        restaurant:
+          $ref: '#/components/schemas/Restaurant'
+        plan:
+          $ref: '#/components/schemas/Plan'
+        featureFlags:
+          $ref: '#/components/schemas/FeatureFlags'
+
+    Category:
+      type: object
+      required: [id, name, targetStation]
+      properties:
+        id:
+          type: string
+          example: cat-rice-kottu
+        name:
+          type: string
+          example: Rice & Kottu
+        icon:
+          type: string
+          example: Utensils
+        sortOrder:
+          type: integer
+          example: 1
+        targetStation:
+          type: string
+          enum: [kitchen, bar]
+          example: kitchen
+
+    Modifier:
+      type: object
+      required: [id, name, priceDeltaCents]
+      properties:
+        id:
+          type: string
+          example: mod-spicy-extra
+        name:
+          type: string
+          example: Extra Spicy
+        priceDeltaCents:
+          type: integer
+          example: 0
+
+    MenuItem:
+      type: object
+      required: [id, categoryId, name, priceCents, isAvailable]
+      properties:
+        id:
+          type: string
+          example: item-kottu-01
+        categoryId:
+          type: string
+          example: cat-rice-kottu
+        name:
+          type: string
+          example: Chicken Kottu
+        description:
+          type: string
+          example: Chopped godamba roti stir fried with chicken, egg, leeks, and curry gravy
+        priceCents:
+          type: integer
+          example: 145000
+        costCents:
+          type: integer
+          example: 62000
+        imageUrl:
+          type: string
+          nullable: true
+          example: https://images.unsplash.com/photo-1589302168068-964664d93dc0
+        isVeg:
+          type: boolean
+          example: false
+        isSpicy:
+          type: boolean
+          example: true
+        isAvailable:
+          type: boolean
+          example: true
+        modifiers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Modifier'
+
+    Table:
+      type: object
+      required: [id, number, capacity, status]
+      properties:
+        id:
+          type: string
+          example: table-005
+        number:
+          type: string
+          example: Table 5
+        areaName:
+          type: string
+          example: Main AC Hall
+        capacity:
+          type: integer
+          example: 4
+        status:
+          type: string
+          enum: [available, occupied, billed, reserved, cleaning]
+          example: available
+        activeOrderId:
+          type: string
+          nullable: true
+          example: null
+        activeOrderTotalCents:
+          type: integer
+          nullable: true
+          example: null
+
+    OrderItem:
+      type: object
+      required: [id, menuItemId, name, quantity, unitPriceCents, subtotalCents, status]
+      properties:
+        id:
+          type: string
+          example: ord-item-01
+        menuItemId:
+          type: string
+          example: item-kottu-01
+        name:
+          type: string
+          example: Chicken Kottu
+        quantity:
+          type: integer
+          example: 2
+        unitPriceCents:
+          type: integer
+          example: 145000
+        subtotalCents:
+          type: integer
+          example: 290000
+        notes:
+          type: string
+          nullable: true
+          example: Extra gravy on the side
+        status:
+          type: string
+          enum: [pending, fired, preparing, ready, served, canceled]
+          example: preparing
+
+    Order:
+      type: object
+      required: [id, orderNumber, orderType, status, subtotalCents, totalCents, items, createdAt]
+      properties:
+        id:
+          type: string
+          example: ord-1005
+        orderNumber:
+          type: string
+          example: ORD-1005
+        tableId:
+          type: string
+          nullable: true
+          example: table-005
+        tableNumber:
+          type: string
+          nullable: true
+          example: Table 5
+        orderType:
+          type: string
+          enum: [dine_in, takeaway, delivery, qr_self_order]
+          example: dine_in
+        status:
+          type: string
+          enum: [draft, confirmed, preparing, ready, billed, completed, voided]
+          example: preparing
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        subtotalCents:
+          type: integer
+          example: 345000
+        discountCents:
+          type: integer
+          example: 0
+        taxCents:
+          type: integer
+          example: 0
+        serviceChargeCents:
+          type: integer
+          example: 34500
+        totalCents:
+          type: integer
+          example: 379500
+        clientCreatedUuid:
+          type: string
+          nullable: true
+          example: 7b84cf22-90e6-42bb-b0f3-855c5df6f50b
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-10-23T10:15:00Z'
+
+    Payment:
+      type: object
+      required: [id, orderId, amountCents, paymentMethod, status, createdAt]
+      properties:
+        id:
+          type: string
+          example: pay-8901
+        orderId:
+          type: string
+          example: ord-1005
+        amountCents:
+          type: integer
+          example: 379500
+        paymentMethod:
+          type: string
+          enum: [cash, card, qr_code, online_transfer]
+          example: cash
+        status:
+          type: string
+          enum: [completed, refunded]
+          example: completed
+        tenderedCents:
+          type: integer
+          nullable: true
+          example: 400000
+        changeCents:
+          type: integer
+          nullable: true
+          example: 20500
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-10-23T10:45:00Z'
+
+    KitchenTicket:
+      type: object
+      required: [id, orderId, orderNumber, ticketNumber, station, status, items, firedAt]
+      properties:
+        id:
+          type: string
+          example: kot-042
+        orderId:
+          type: string
+          example: ord-1005
+        orderNumber:
+          type: string
+          example: ORD-1005
+        ticketNumber:
+          type: string
+          example: KOT-042
+        tableNumber:
+          type: string
+          example: Table 5
+        station:
+          type: string
+          enum: [kitchen, bar]
+          example: kitchen
+        status:
+          type: string
+          enum: [new, preparing, ready, collected]
+          example: preparing
+        items:
+          type: array
+          items:
+            type: object
+            required: [name, quantity]
+            properties:
+              name:
+                type: string
+                example: Chicken Kottu
+              quantity:
+                type: integer
+                example: 2
+              notes:
+                type: string
+                example: Extra spicy
+        firedAt:
+          type: string
+          format: date-time
+          example: '2026-10-23T10:20:00Z'
+        elapsedMinutes:
+          type: integer
+          example: 8
+
+    Shift:
+      type: object
+      required: [id, openedAt, openingFloatCents, status]
+      properties:
+        id:
+          type: string
+          example: shift-morning-01
+        openedAt:
+          type: string
+          format: date-time
+          example: '2026-10-23T07:00:00Z'
+        closedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        openingFloatCents:
+          type: integer
+          example: 1000000
+        cashSalesCents:
+          type: integer
+          example: 14500000
+        cardSalesCents:
+          type: integer
+          example: 9500000
+        expectedCashCents:
+          type: integer
+          example: 15500000
+        closingCashCents:
+          type: integer
+          nullable: true
+          example: null
+        cashDifferenceCents:
+          type: integer
+          nullable: true
+          example: null
+        status:
+          type: string
+          enum: [open, closed]
+          example: open
