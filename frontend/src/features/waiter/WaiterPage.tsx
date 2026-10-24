@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   LayoutGrid,
   ListOrdered,
@@ -14,54 +14,60 @@ import { StatusPill } from "@/components/common/StatusPill";
 import { BigButton } from "@/components/common/BigButton";
 import { formatMoney } from "@/lib/formatMoney";
 import { toast } from "sonner";
-import { MOCK_MENU_ITEMS } from "@/mocks/data/mockData";
 import { MicButton } from "@/components/voice/MicButton";
 import { VoiceOrderDraftModal } from "@/components/voice/VoiceOrderDraftModal";
 import { parseVoiceOrder } from "@/lib/voiceParser";
-import type { VoiceOrderDraft } from "@/api/types";
+import type { KitchenTicket, MenuItem, Order, Table, VoiceOrderDraft } from "@/api/types";
+import { menuApi } from "@/api/endpoints/menu";
+import { tablesApi } from "@/api/endpoints/tables";
+import { ordersApi } from "@/api/endpoints/orders";
+import { kitchenApi } from "@/api/endpoints/kitchen";
 
 export function WaiterPage() {
   const [activeTab, setActiveTab] = useState<"tables" | "orders" | "ready" | "menu">("tables");
-  const [selectedTable, setSelectedTable] = useState<string>("T2");
+  const [selectedTable, setSelectedTable] = useState<string>("");
   const [activeVoiceDraft, setActiveVoiceDraft] = useState<VoiceOrderDraft | null>(null);
 
   // Waiter cart
   const [waiterCart, setWaiterCart] = useState<
     Array<{ id: string; name: string; priceCents: number; qty: number }>
-  >([
-    { id: "item-kottu-chick", name: "Chicken Kottu", priceCents: 145000, qty: 1 },
-  ]);
+  >([]);
 
   // Ready orders waiting for pickup
-  const [readyItems, setReadyItems] = useState([
-    { id: "r1", table: "T2", dish: "Chicken Kottu × 2", time: "2 min ago" },
-    { id: "r2", table: "T5", dish: "Devilled Chicken × 1", time: "Just now" },
-  ]);
+  const [readyItems, setReadyItems] = useState<Array<{ id: string; table: string; dish: string; time: string }>>([]);
+  const [tables, setTables] = useState<Table[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [myOrders, setMyOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [pendingWaiterOrderId, setPendingWaiterOrderId] = useState<string | null>(null);
 
-  // Active orders
-  const myOrders = [
-    { id: "ord-1", table: "T2", status: "preparing", totalCents: 290000, itemsCount: 3 },
-    { id: "ord-2", table: "T4", status: "ready", totalCents: 160000, itemsCount: 1 },
-  ];
+  const loadData = useCallback(async () => {
+    try {
+      const [tableRows, items, orders, tickets] = await Promise.all([
+        tablesApi.getTables(), menuApi.getItems(), ordersApi.getOrders(), kitchenApi.getTickets(),
+      ]);
+      setTables(tableRows);
+      if (tableRows.length && !tableRows.some((table) => table.number === selectedTable)) setSelectedTable(tableRows[0].number);
+      setMenuItems(items.filter((item) => item.isAvailable));
+      setMyOrders(orders.filter((order) => ["draft", "confirmed", "preparing", "ready", "billed"].includes(order.status)));
+      setReadyItems(tickets.filter((ticket) => ticket.status === "ready").map((ticket: KitchenTicket) => ({
+        id: ticket.id, table: ticket.tableNumber || "Takeaway", dish: ticket.items.map((item) => `${item.name} × ${item.quantity}`).join(", "), time: `${ticket.elapsedMinutes} min ago`,
+      })));
+    } catch (err: any) {
+      toast.error(err?.message || "Could not load waiter data");
+    } finally { setIsLoading(false); }
+  }, [selectedTable]);
 
-  const handleSimulateReadyAlert = () => {
-    toast.success("Table T3: 2× Fresh Lime Soda is READY for pickup!", {
-      duration: 5000,
-    });
-    setReadyItems((prev) => [
-      { id: Date.now().toString(), table: "T3", dish: "Lime Soda × 2", time: "Just now" },
-      ...prev,
-    ]);
-  };
+  useEffect(() => { loadData(); }, [loadData]);
 
   const handleVoiceTranscript = (transcript: string) => {
-    const draft = parseVoiceOrder(transcript, MOCK_MENU_ITEMS);
+    const draft = parseVoiceOrder(transcript, menuItems);
     setActiveVoiceDraft(draft);
   };
 
   const handleConfirmVoiceDraft = (confirmed: VoiceOrderDraft) => {
     if (confirmed.tableNumber) {
-      setSelectedTable(confirmed.tableNumber.replace('Table ', 'T'));
+      setSelectedTable(confirmed.tableNumber.replace(/^T(\d+)$/, 'Table $1'));
     }
 
     const newCartItems = confirmed.items.map((i) => ({
@@ -89,10 +95,32 @@ export function WaiterPage() {
     setActiveTab("menu");
   };
 
-  const handleSendOrder = () => {
-    toast.success(`Order for ${selectedTable} sent to Kitchen`);
-    setWaiterCart([]);
-    setActiveTab("orders");
+  const handleSendOrder = async () => {
+    const table = tables.find((row) => row.number === selectedTable);
+    if (!table || !waiterCart.length) return;
+    let dispatchingSavedOrder = Boolean(pendingWaiterOrderId);
+    try {
+      let orderId = pendingWaiterOrderId;
+      if (!orderId) {
+        const order = await ordersApi.createOrder({
+          tableId: table.id, orderType: "dine_in",
+          items: waiterCart.map((item) => ({ menuItemId: item.id, quantity: item.qty })),
+        });
+        orderId = order.id;
+        dispatchingSavedOrder = true;
+        setPendingWaiterOrderId(orderId);
+      }
+      await ordersApi.sendToKitchen(orderId);
+      setPendingWaiterOrderId(null);
+      setWaiterCart([]);
+      await loadData();
+      setActiveTab("orders");
+      toast.success(`Order for ${selectedTable} sent to kitchen`);
+    } catch (err: any) {
+      toast.error(dispatchingSavedOrder
+        ? `Order is saved but kitchen dispatch failed. Retry to dispatch it. ${err?.message || ""}`
+        : err?.message || "Could not send order");
+    }
   };
 
   const cartTotalCents = waiterCart.reduce((sum, i) => sum + i.priceCents * i.qty, 0);
@@ -114,10 +142,10 @@ export function WaiterPage() {
             onTranscript={handleVoiceTranscript}
           />
           <button
-            onClick={handleSimulateReadyAlert}
+            onClick={() => void loadData()}
             className="text-xs font-semibold rounded-full border border-border bg-bg px-3 py-1.5 hover:bg-surface text-muted hover:text-text transition-colors"
           >
-            Test Ready Alert
+            Refresh Queue
           </button>
         </div>
       </div>
@@ -131,20 +159,14 @@ export function WaiterPage() {
               Select Table to Order
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { number: "T1", status: "free" as const, seats: 2 },
-                { number: "T2", status: "busy" as const, seats: 4 },
-                { number: "T3", status: "busy" as const, seats: 6 },
-                { number: "T4", status: "waiting" as const, seats: 4 },
-                { number: "T5", status: "free" as const, seats: 2 },
-                { number: "T6", status: "free" as const, seats: 4 },
-              ].map((t) => (
+              {tables.map((t) => (
                 <button
                   key={t.number}
                   onClick={() => {
                     setSelectedTable(t.number);
                     setActiveTab("menu");
                   }}
+                  disabled={t.status === "occupied" || t.status === "billed"}
                   className={`flex flex-col justify-between p-4 rounded-card border text-left min-h-28 transition-all ${
                     selectedTable === t.number
                       ? "border-brand bg-brand-soft shadow-sm"
@@ -153,8 +175,8 @@ export function WaiterPage() {
                 >
                   <span className="text-2xl font-bold text-text">{t.number}</span>
                   <div className="flex items-center justify-between mt-2">
-                    <StatusPill tone={t.status} label={t.status} />
-                    <span className="text-xs text-muted">{t.seats} seats</span>
+                    <StatusPill tone={t.status === "available" ? "free" : t.status === "reserved" ? "waiting" : "busy"} label={t.status} />
+                    <span className="text-xs text-muted">{t.capacity} seats</span>
                   </div>
                 </button>
               ))}
@@ -175,6 +197,8 @@ export function WaiterPage() {
               </span>
             </div>
 
+            {isLoading && <p className="py-8 text-center text-sm text-muted">Loading active orders…</p>}
+            {!isLoading && myOrders.length === 0 && <p className="py-8 text-center text-sm text-muted">No active orders.</p>}
             {myOrders.map((ord) => (
               <div
                 key={ord.id}
@@ -182,8 +206,8 @@ export function WaiterPage() {
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xl font-bold text-text">{ord.table}</span>
-                    <span className="text-xs font-mono text-muted">#{ord.id}</span>
+                    <span className="text-xl font-bold text-text">{ord.tableNumber || ord.orderType}</span>
+                    <span className="text-xs font-mono text-muted">#{ord.orderNumber}</span>
                     <span
                       className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                         ord.status === "ready"
@@ -196,7 +220,7 @@ export function WaiterPage() {
                       {ord.status}
                     </span>
                   </div>
-                  <p className="text-xs text-muted mt-1">{ord.itemsCount} dishes ordered · Dilshan</p>
+                  <p className="text-xs text-muted mt-1">{ord.items.length} dishes ordered</p>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -209,9 +233,9 @@ export function WaiterPage() {
                   {ord.status !== "billed" ? (
                     <button
                       type="button"
-                      onClick={() => {
-                        toast.success(`Bill requested for ${ord.table}. Cashier and POS notified.`);
-                        ord.status = "billed";
+                      onClick={async () => {
+                        try { await ordersApi.requestBill(ord.id); await loadData(); toast.success(`Bill requested for ${ord.tableNumber || ord.orderNumber}.`); }
+                        catch (err: any) { toast.error(err?.message || "Could not request bill"); }
                       }}
                       className="h-9 px-3 rounded-xl border border-border bg-bg hover:bg-surface text-text text-xs font-bold transition-all active:scale-95 shadow-sm"
                     >
@@ -259,8 +283,10 @@ export function WaiterPage() {
                     variant="success"
                     size="md"
                     onClick={() => {
-                      setReadyItems((prev) => prev.filter((i) => i.id !== r.id));
-                      toast.success(`Served ${r.dish} to ${r.table}`);
+                      void kitchenApi.updateTicketStatus(r.id, "collected").then(() => {
+                        setReadyItems((prev) => prev.filter((i) => i.id !== r.id));
+                        toast.success(`Served ${r.dish} to ${r.table}`);
+                      }).catch((err: any) => toast.error(err?.message || "Could not mark items served"));
                     }}
                   />
                 </div>
@@ -284,7 +310,7 @@ export function WaiterPage() {
             </div>
 
             <div className="space-y-2.5">
-              {MOCK_MENU_ITEMS.map((item) => {
+              {menuItems.map((item) => {
                 const inCart = waiterCart.find((i) => i.id === item.id);
 
                 return (

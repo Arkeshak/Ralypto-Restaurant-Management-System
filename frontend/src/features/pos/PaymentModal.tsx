@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, CreditCard, Banknote, QrCode, CheckCircle2, Split, Check } from "lucide-react";
 import { formatMoney } from "@/lib/formatMoney";
@@ -13,6 +13,7 @@ interface PaymentModalProps {
   onClose: () => void;
   onConfirmPayment: (paymentResult: {
     method: "cash" | "card" | "qr_code" | "mixed" | "split";
+    paymentMethod?: "cash" | "card" | "qr_code";
     tenderedCents?: number;
     changeCents?: number;
     cashCents?: number;
@@ -48,6 +49,14 @@ export function PaymentModal({
   const [equalParts, setEqualParts] = useState<number>(2);
   const [currentPartPaidIndex, setCurrentPartPaidIndex] = useState<number>(0);
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>(items.map((i) => i.id));
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setTenderedCents(totalCents);
+    setMixedCashRupees(String(Math.floor(totalCents / 200)));
+    setSelectedItemIds(items.map((item) => item.id));
+    setCurrentPartPaidIndex(0);
+  }, [isOpen, totalCents]);
 
   if (!isOpen) return null;
 
@@ -86,6 +95,7 @@ export function PaymentModal({
     if (activeTab === "single") {
       onConfirmPayment({
         method: singleMethod,
+        paymentMethod: singleMethod,
         tenderedCents: singleMethod === "cash" ? tenderedCents : totalCents,
         changeCents: singleMethod === "cash" ? changeCents : 0,
         paidAmountCents: totalCents,
@@ -102,6 +112,7 @@ export function PaymentModal({
       if (splitMode === "equal") {
         onConfirmPayment({
           method: "split",
+          paymentMethod: singleMethod,
           splitType: "equal",
           splitPart: currentPartPaidIndex + 1,
           splitTotalParts: equalParts,
@@ -110,6 +121,7 @@ export function PaymentModal({
       } else {
         onConfirmPayment({
           method: "split",
+          paymentMethod: singleMethod,
           splitType: "item",
           paidAmountCents: selectedItemsTotalCents,
         });

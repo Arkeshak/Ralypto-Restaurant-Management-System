@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
@@ -19,12 +19,14 @@ import { formatMoney } from "@/lib/formatMoney";
 import { toast } from "sonner";
 import { useReadOnly } from "@/hooks/useReadOnly";
 import { menuApi } from "@/api/endpoints/menu";
-import { MOCK_CATEGORIES, MOCK_MENU_ITEMS } from "@/mocks/data/mockData";
-import type { MenuItem } from "@/api/types";
+import type { Category, MenuItem } from "@/api/types";
 
 export function MenuManagerPage() {
   const { isReadOnly, preventInReadOnly } = useReadOnly();
-  const [items, setItems] = useState<MenuItem[]>(MOCK_MENU_ITEMS);
+  const [items, setItems] = useState<MenuItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedCat, setSelectedCat] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
@@ -37,7 +39,7 @@ export function MenuManagerPage() {
 
   // Form states
   const [name, setName] = useState("");
-  const [categoryId, setCategoryId] = useState(MOCK_CATEGORIES[0]?.id || "");
+  const [categoryId, setCategoryId] = useState("");
   const [priceRupees, setPriceRupees] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string>("");
   const [station, setStation] = useState<"kitchen" | "bar">("kitchen");
@@ -50,6 +52,26 @@ export function MenuManagerPage() {
   const [modifierName, setModifierName] = useState("");
   const [modifierPrice, setModifierPrice] = useState("");
   const [modifiers, setModifiers] = useState<Array<{ id: string; name: string; priceDeltaCents: number }>>([]);
+
+  const loadMenu = async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const [nextCategories, nextItems] = await Promise.all([
+        menuApi.getCategories(),
+        menuApi.getItems(),
+      ]);
+      setCategories(nextCategories);
+      setItems(nextItems);
+      setCategoryId((current) => current || nextCategories[0]?.id || "");
+    } catch (error: any) {
+      setLoadError(error?.message || "Could not load the menu from the server.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => { void loadMenu(); }, []);
 
   // Filtering
   const filteredItems = useMemo(() => {
@@ -102,7 +124,7 @@ export function MenuManagerPage() {
   };
 
   // Inline Price Edit
-  const handleSavePrice = (id: string) => {
+  const handleSavePrice = async (id: string) => {
     if (isReadOnly) {
       toast.error("Action blocked: Your account is in Read-Only mode. Please renew your plan.");
       setEditingPriceId(null);
@@ -111,16 +133,23 @@ export function MenuManagerPage() {
     const parsed = parseFloat(tempPrice);
     if (!isNaN(parsed) && parsed > 0) {
       const newCents = Math.round(parsed * 100);
+      const previous = items.find((item) => item.id === id);
       setItems((prev) =>
         prev.map((i) => (i.id === id ? { ...i, priceCents: newCents } : i))
       );
-      toast.success(`Price updated to ${formatMoney(newCents)}`);
+      try {
+        await menuApi.updateItem(id, { priceCents: newCents });
+        toast.success(`Price updated to ${formatMoney(newCents)}`);
+      } catch (error: any) {
+        if (previous) setItems((prev) => prev.map((item) => item.id === id ? previous : item));
+        toast.error(error?.message || "Failed to update menu price.");
+      }
     }
     setEditingPriceId(null);
   };
 
   // Add Item Handler
-  const handleAddItem = (e: React.FormEvent) => {
+  const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isReadOnly) {
       toast.error("Action blocked: Your account is in Read-Only mode. Please renew your plan.");
@@ -135,23 +164,28 @@ export function MenuManagerPage() {
     const costCents = costRupees ? Math.round(parseFloat(costRupees) * 100) : Math.round(priceCents * 0.45);
 
     const newItem: MenuItem = {
-      id: `item-${Date.now()}`,
+      id: "",
       categoryId,
       name,
       description: description || "Freshly prepared house special",
       priceCents,
       costCents,
-      imageUrl: photoPreview || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80",
+      imageUrl: photoPreview || undefined,
       isVeg,
       isSpicy,
       isAvailable: true,
       modifiers: modifiers.length > 0 ? modifiers : undefined,
     };
 
-    setItems((prev) => [newItem, ...prev]);
-    toast.success(`Added ${name} to Menu`);
-    setIsDrawerOpen(false);
-    resetForm();
+    try {
+      const created = await menuApi.createItem(newItem);
+      setItems((prev) => [created, ...prev]);
+      toast.success(`Added ${name} to Menu`);
+      setIsDrawerOpen(false);
+      resetForm();
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to add menu item.");
+    }
   };
 
   const resetForm = () => {
@@ -214,7 +248,7 @@ export function MenuManagerPage() {
           >
             All Items ({items.length})
           </button>
-          {MOCK_CATEGORIES.map((cat) => (
+          {categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setSelectedCat(cat.id)}
@@ -231,7 +265,14 @@ export function MenuManagerPage() {
       </div>
 
       {/* Items Table / Card Layout */}
-      {filteredItems.length === 0 ? (
+      {isLoading ? (
+        <div className="mt-8 rounded-card border border-border bg-surface p-12 text-center text-sm text-muted">Loading menu from the server…</div>
+      ) : loadError ? (
+        <div className="mt-8 rounded-card border border-border bg-surface p-12 text-center">
+          <p className="text-sm text-danger">{loadError}</p>
+          <button className="mt-4 rounded-full border border-border px-4 py-2 text-sm font-semibold" onClick={() => void loadMenu()}>Retry</button>
+        </div>
+      ) : filteredItems.length === 0 ? (
         <div className="mt-8">
           <EmptyState
             icon={UtensilsCrossed}
@@ -286,7 +327,7 @@ export function MenuManagerPage() {
 
                     {/* Category */}
                     <td className="py-3 px-4 text-muted text-xs font-medium">
-                      {MOCK_CATEGORIES.find((c) => c.id === item.categoryId)?.name || "Main"}
+                      {categories.find((c) => c.id === item.categoryId)?.name || "Main"}
                     </td>
 
                     {/* Inline Price Edit */}
@@ -409,7 +450,7 @@ export function MenuManagerPage() {
                       onChange={(e) => setCategoryId(e.target.value)}
                       className="w-full h-12 px-4 rounded-xl border border-border bg-bg text-text focus:outline-none focus:ring-2 focus:ring-info text-sm"
                     >
-                      {MOCK_CATEGORIES.map((c) => (
+                      {categories.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}
                         </option>

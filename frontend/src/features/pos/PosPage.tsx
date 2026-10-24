@@ -16,13 +16,17 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { calcTotals } from "./cartMath";
 import { formatMoney } from "@/lib/formatMoney";
 import { useShiftStore } from "@/stores/shift.store";
-import { MOCK_CATEGORIES, MOCK_MENU_ITEMS } from "@/mocks/data/mockData";
-import type { MenuItem, Modifier } from "@/api/types";
+import { menuApi } from "@/api/endpoints/menu";
+import { tablesApi } from "@/api/endpoints/tables";
+import { ordersApi } from "@/api/endpoints/orders";
+import { useAuth } from "@/hooks/useAuth";
+import type { Category, MenuItem, Modifier, Order } from "@/api/types";
 
 export function PosPage() {
   const [searchParams] = useSearchParams();
   const tableId = searchParams.get("table");
   const tableNumber = searchParams.get("number") || (tableId ? `T${tableId}` : undefined);
+  const { restaurant } = useAuth();
 
   // Shift Store state
   const currentShift = useShiftStore((s) => s.currentShift);
@@ -30,32 +34,42 @@ export function PosPage() {
   const isShiftOpen = currentShift?.status === "open";
   const recordPaymentToShift = useShiftStore((s) => s.recordPaymentToShift);
   const [isOpenShiftModalOpen, setIsOpenShiftModalOpen] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [menuLoading, setMenuLoading] = useState(true);
+  const [menuError, setMenuError] = useState<string | null>(null);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [serverOrderStatus, setServerOrderStatus] = useState<Order["status"] | null>(null);
+  const [receiptOrderNumber, setReceiptOrderNumber] = useState("—");
 
   // Fetch current shift on mount if not already loaded
   useEffect(() => {
     fetchCurrentShift();
   }, [fetchCurrentShift]);
 
+  useEffect(() => {
+    let active = true;
+    setMenuLoading(true);
+    setMenuError(null);
+    Promise.all([menuApi.getCategories(), menuApi.getItems()])
+      .then(([nextCategories, nextItems]) => {
+        if (!active) return;
+        setCategories(nextCategories);
+        setMenuItems(nextItems);
+      })
+      .catch((error: any) => {
+        if (active) setMenuError(error?.message || "Failed to load menu from server.");
+      })
+      .finally(() => { if (active) setMenuLoading(false); });
+    return () => { active = false; };
+  }, []);
+
   // Categories & Filtering
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Cart state
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      id: "item-kottu-chick",
-      name: "Chicken Kottu",
-      priceCents: 145000,
-      qty: 1,
-      notes: "Extra chili paste",
-    },
-    {
-      id: "item-starter-hbc",
-      name: "Hot Butter Cuttlefish (HBC)",
-      priceCents: 220000,
-      qty: 1,
-    },
-  ]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
   // Discount & Charges state
   const [discountPercent, setDiscountPercent] = useState<number>(0);
@@ -77,9 +91,31 @@ export function PosPage() {
   const [isMobileOrderOpen, setIsMobileOrderOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
+  useEffect(() => {
+    if (!tableId) return;
+    let active = true;
+    Promise.all([tablesApi.getTables(), ordersApi.getOrders()]).then(async ([tables, orders]) => {
+      const table = tables.find((entry) => entry.id === tableId || entry.number === tableNumber);
+      const existing = table?.activeOrderId ? orders.find((entry) => entry.id === table.activeOrderId) : null;
+      if (!active || !existing) return;
+      setOrderId(existing.id);
+      setServerOrderStatus(existing.status);
+      setReceiptOrderNumber(existing.orderNumber);
+      setCartItems(existing.items.map((item) => ({
+        id: item.menuItemId,
+        name: item.name,
+        priceCents: item.unitPriceCents,
+        qty: item.quantity,
+        notes: item.notes || undefined,
+      })));
+      setDiscountCents(existing.discountCents || 0);
+    }).catch((error: any) => toast.error(error?.message || "Failed to load table order."));
+    return () => { active = false; };
+  }, [tableId, tableNumber]);
+
   // Filtered menu items
   const filteredItems = useMemo(() => {
-    return MOCK_MENU_ITEMS.filter((item) => {
+    return menuItems.filter((item) => item.isAvailable).filter((item) => {
       const categoryMatch =
         selectedCategoryId === "all" || item.categoryId === selectedCategoryId;
       const searchMatch =
@@ -88,7 +124,7 @@ export function PosPage() {
         item.description.toLowerCase().includes(searchQuery.toLowerCase());
       return categoryMatch && searchMatch;
     });
-  }, [selectedCategoryId, searchQuery]);
+  }, [menuItems, selectedCategoryId, searchQuery]);
 
   // Cart Calculations with standard 10% tax and conditional service charge & discounts
   const totals = useMemo(() => {
@@ -97,8 +133,8 @@ export function PosPage() {
       {
         discountPercent,
         discountCents,
-        servicePercent: serviceChargeEnabled ? 10 : 0,
-        taxPercent: 10,
+        servicePercent: serviceChargeEnabled ? restaurant.serviceChargeRate * 100 : 0,
+        taxPercent: restaurant.taxRate * 100,
       }
     );
   }, [cartItems, discountPercent, discountCents, serviceChargeEnabled]);
@@ -178,17 +214,53 @@ export function PosPage() {
     );
   };
 
-  const handleSendToKitchen = () => {
-    setIsSending(true);
-    setTimeout(() => {
-      setIsSending(false);
-      toast.success("Order sent to Kitchen");
-      setIsMobileOrderOpen(false);
-    }, 450);
+  const createOrderFromCart = async () => {
+    if (cartItems.length === 0) throw new Error("Add at least one available menu item first.");
+    const created = await ordersApi.createOrder({
+      tableId: tableId || undefined,
+      orderType: tableId ? "dine_in" : "takeaway",
+      discountCents,
+      serviceChargeEnabled,
+      items: cartItems.map((item) => ({ menuItemId: item.id, quantity: item.qty, notes: item.notes })),
+    });
+    setOrderId(created.id);
+    setReceiptOrderNumber(created.orderNumber);
+    setServerOrderStatus(created.status);
+    return created;
   };
 
-  const handlePrintBill = () => {
-    setIsReceiptOpen(true);
+  const handleSendToKitchen = () => {
+    if (serverOrderStatus && !["draft", "confirmed"].includes(serverOrderStatus)) {
+      toast.error("This order has already been sent to the kitchen.");
+      return;
+    }
+    setIsSending(true);
+    void (async () => {
+      try {
+        const created = orderId ? null : await createOrderFromCart();
+        const id = orderId || created!.id;
+        await ordersApi.sendToKitchen(id);
+        setServerOrderStatus("preparing");
+        toast.success("Order sent to Kitchen");
+        setIsMobileOrderOpen(false);
+      } catch (error: any) {
+        toast.error(error?.message || "Failed to send order to kitchen.");
+      } finally {
+        setIsSending(false);
+      }
+    })();
+  };
+
+  const handlePrintBill = async () => {
+    try {
+      const created = orderId ? null : await createOrderFromCart();
+      const id = orderId || created!.id;
+      if (serverOrderStatus !== "billed") await ordersApi.requestBill(id);
+      setServerOrderStatus("billed");
+      setIsReceiptOpen(true);
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to prepare bill.");
+    }
   };
 
   const handleOpenPay = () => {
@@ -200,24 +272,46 @@ export function PosPage() {
     setIsPayOpen(true);
   };
 
-  const handleConfirmPayment = (paymentResult: any) => {
-    setIsPayOpen(false);
-    setIsMobileOrderOpen(false);
-
-    if (paymentResult.method === "mixed") {
-      recordPaymentToShift("cash", paymentResult.cashCents || 0);
-      recordPaymentToShift("card", paymentResult.cardCents || 0);
-    } else {
-      recordPaymentToShift(paymentResult.method, paymentResult.paidAmountCents || totals.total);
+  const handleConfirmPayment = async (paymentResult: any) => {
+    try {
+      const created = orderId ? null : await createOrderFromCart();
+      const id = orderId || created!.id;
+      if (serverOrderStatus !== "billed") await ordersApi.requestBill(id);
+      const method = paymentResult.method === "mixed" ? "mixed" : paymentResult.paymentMethod || paymentResult.method;
+      const settled = await ordersApi.pay(id, method === "mixed" ? {
+        paymentMethod: "mixed",
+        allocations: [
+          { paymentMethod: "cash", amountCents: paymentResult.cashCents || 0 },
+          { paymentMethod: "card", amountCents: paymentResult.cardCents || 0 },
+        ],
+      } : {
+        paymentMethod: method,
+        amountCents: paymentResult.method === "split" ? paymentResult.paidAmountCents : undefined,
+        tenderedCents: method === "cash" ? paymentResult.tenderedCents : undefined,
+      });
+      setReceiptOrderNumber(settled.order.orderNumber);
+      settled.payments.forEach((payment) => {
+        const shiftMethod = payment.paymentMethod === "cash" ? "cash" : payment.paymentMethod as "card" | "qr_code";
+        recordPaymentToShift(shiftMethod, payment.amountCents);
+      });
+      if (settled.outstandingCents > 0) {
+        setServerOrderStatus("billed");
+        toast.success(`${formatMoney(settled.amountPaidCents)} recorded. ${formatMoney(settled.outstandingCents)} remains.`);
+        return;
+      }
+      setIsPayOpen(false);
+      setIsMobileOrderOpen(false);
+      toast.success(`Payment settled via ${String(paymentResult.method).toUpperCase()}`);
+      setIsReceiptOpen(true);
+      setCartItems([]);
+      setDiscountPercent(0);
+      setDiscountCents(0);
+      setDiscountReason("");
+      setOrderId(null);
+      setServerOrderStatus("completed");
+    } catch (error: any) {
+      toast.error(error?.message || "Payment could not be completed.");
     }
-
-    toast.success(`Payment settled via ${String(paymentResult.method).toUpperCase()}`);
-    setIsReceiptOpen(true);
-    // Reset ticket
-    setCartItems([]);
-    setDiscountPercent(0);
-    setDiscountCents(0);
-    setDiscountReason("");
   };
 
   const handleHoldOrder = () => {
@@ -249,8 +343,16 @@ export function PosPage() {
     toast.info("Held order discarded");
   };
 
-  const handleConfirmVoid = (pin?: string) => {
-    if (pin === "1234" || pin === "2222" || pin === "1111") {
+  const handleConfirmVoid = async (pin?: string) => {
+    if (orderId) {
+      try {
+        await ordersApi.voidOrder(orderId, { managerPin: pin || "", reason: "Voided from POS" });
+      } catch (error: any) {
+        toast.error(error?.message || "Manager authorization failed.");
+        return;
+      }
+    }
+    if (pin) {
       setCartItems([]);
       setDiscountPercent(0);
       setDiscountCents(0);
@@ -286,7 +388,7 @@ export function PosPage() {
       {/* Column 1: Categories (Left) - Hidden on phone */}
       <div className={`hidden w-52 shrink-0 border-r border-border overflow-y-auto lg:block ${!isShiftOpen ? "pt-10" : ""}`}>
         <CategoryList
-          categories={MOCK_CATEGORIES}
+          categories={categories}
           selectedCategoryId={selectedCategoryId}
           onSelectCategory={setSelectedCategoryId}
         />
@@ -306,7 +408,7 @@ export function PosPage() {
           >
             All Items
           </button>
-          {MOCK_CATEGORIES.map((cat) => (
+          {categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategoryId(cat.id)}
@@ -322,12 +424,21 @@ export function PosPage() {
         </div>
 
         <div className="flex-1 min-h-0">
-          <MenuGrid
-            items={filteredItems}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            onSelectItem={handleSelectItem}
-          />
+          {menuLoading ? (
+            <div className="flex h-full items-center justify-center text-sm text-muted">Loading menu…</div>
+          ) : menuError ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-danger">
+              <span>{menuError}</span>
+              <button className="rounded-full border border-border px-4 py-2 text-text" onClick={() => { setMenuLoading(true); void Promise.all([menuApi.getCategories(), menuApi.getItems()]).then(([nextCategories, nextItems]) => { setCategories(nextCategories); setMenuItems(nextItems); setMenuError(null); }).catch((error: any) => setMenuError(error?.message || "Failed to load menu.")).finally(() => setMenuLoading(false)); }}>Retry</button>
+            </div>
+          ) : (
+            <MenuGrid
+              items={filteredItems}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              onSelectItem={handleSelectItem}
+            />
+          )}
         </div>
       </div>
 
@@ -448,7 +559,7 @@ export function PosPage() {
       {/* 80mm Receipt Preview Modal */}
       <ReceiptModal
         isOpen={isReceiptOpen}
-        orderNumber="ORD-882"
+        orderNumber={receiptOrderNumber}
         tableNumber={tableNumber}
         items={cartItems.map((i) => ({
           ...i,

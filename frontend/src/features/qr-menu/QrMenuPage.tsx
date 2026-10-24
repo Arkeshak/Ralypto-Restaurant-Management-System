@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,14 +15,15 @@ import { formatMoney } from "@/lib/formatMoney";
 import { BigButton } from "@/components/common/BigButton";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import { MOCK_CATEGORIES, MOCK_MENU_ITEMS } from "@/mocks/data/mockData";
-import type { MenuItem, VoiceOrderDraft } from "@/api/types";
+import type { Category, MenuItem, VoiceOrderDraft } from "@/api/types";
+import { fallbackMenuItemImageUrl, menuItemImageUrl } from "@/lib/menuImages";
+import { apiClient } from "@/api/client";
 import { MicButton } from "@/components/voice/MicButton";
 import { VoiceOrderDraftModal } from "@/components/voice/VoiceOrderDraftModal";
 import { parseVoiceOrder } from "@/lib/voiceParser";
 
 export function QrMenuPage() {
-  const { tableNumber = "5" } = useParams();
+  const { restaurantCode = "CEY101", tableNumber = "5" } = useParams();
   const { i18n } = useTranslation();
 
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -30,15 +31,41 @@ export function QrMenuPage() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isOrderConfirmed, setIsOrderConfirmed] = useState(false);
   const [activeVoiceDraft, setActiveVoiceDraft] = useState<VoiceOrderDraft | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [tableId, setTableId] = useState<string | null>(null);
+  const [restaurantName, setRestaurantName] = useState("Ralypto Bistro");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const loadPublicMenu = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await apiClient<{ restaurant: { name: string }; table: { id: string }; categories: Category[]; items: MenuItem[] }>(
+        `/public/menu/${encodeURIComponent(restaurantCode)}/${encodeURIComponent(tableNumber)}`,
+        { skipErrorToast: true },
+      );
+      setRestaurantName(data.restaurant.name);
+      setTableId(data.table.id);
+      setCategories(data.categories);
+      setMenuItems(data.items);
+    } catch (err: any) {
+      toast.error(err?.message || "Could not load this table's menu");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [restaurantCode, tableNumber]);
+
+  useEffect(() => { loadPublicMenu(); }, [loadPublicMenu]);
 
   const handleVoiceTranscript = (transcript: string) => {
-    const draft = parseVoiceOrder(transcript, MOCK_MENU_ITEMS);
+    const draft = parseVoiceOrder(transcript, menuItems);
     setActiveVoiceDraft(draft);
   };
 
   const handleConfirmVoiceDraft = (confirmed: VoiceOrderDraft) => {
     for (const voiceItem of confirmed.items) {
-      const match = MOCK_MENU_ITEMS.find((m) => m.id === voiceItem.menuItemId);
+      const match = menuItems.find((m) => m.id === voiceItem.menuItemId);
       if (match) {
         setCart((prev) => {
           const existing = prev.find((i) => i.item.id === match.id);
@@ -56,7 +83,7 @@ export function QrMenuPage() {
     setIsCartOpen(true);
   };
 
-  const filteredItems = MOCK_MENU_ITEMS.filter(
+  const filteredItems = menuItems.filter(
     (item) => selectedCategory === "all" || item.categoryId === selectedCategory
   );
 
@@ -93,18 +120,37 @@ export function QrMenuPage() {
   );
   const totalItemCount = cart.reduce((sum, i) => sum + i.qty, 0);
 
-  const handleCallWaiter = () => {
-    toast.success(`Waiter called to Table ${tableNumber}. Staff will be with you shortly.`);
+  const handleCallWaiter = async () => {
+    try {
+      await apiClient(`/public/call-waiter?restaurantCode=${encodeURIComponent(restaurantCode)}`, {
+        method: "POST", body: JSON.stringify({ tableId, tableNumber, requestType: "waiter" }),
+      });
+      toast.success(`Waiter called to Table ${tableNumber}.`);
+    } catch (err: any) { toast.error(err?.message || "Could not call the waiter"); }
   };
 
-  const handleRequestBill = () => {
-    toast.success(`Bill requested for Table ${tableNumber}. The cashier is preparing your receipt.`);
+  const handleRequestBill = async () => {
+    try {
+      await apiClient(`/public/request-bill?restaurantCode=${encodeURIComponent(restaurantCode)}`, {
+        method: "POST", body: JSON.stringify({ tableId, tableNumber }),
+      });
+      toast.success(`Bill requested for Table ${tableNumber}.`);
+    } catch (err: any) { toast.error(err?.message || "Could not request the bill"); }
   };
 
-  const handleConfirmOrder = () => {
-    setIsOrderConfirmed(true);
-    setCart([]);
-    setIsCartOpen(false);
+  const handleConfirmOrder = async () => {
+    if (!tableId || cart.length === 0 || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await apiClient(`/public/orders?restaurantCode=${encodeURIComponent(restaurantCode)}`, {
+        method: "POST",
+        body: JSON.stringify({ tableId, orderType: "qr_self_order", items: cart.map(({ item, qty }) => ({ menuItemId: item.id, quantity: qty })) }),
+      });
+      setIsOrderConfirmed(true);
+      setCart([]);
+      setIsCartOpen(false);
+    } catch (err: any) { toast.error(err?.message || "Could not send your order"); }
+    finally { setIsSubmitting(false); }
   };
 
   return (
@@ -114,7 +160,7 @@ export function QrMenuPage() {
         <div className="mx-auto flex max-w-xl items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-lg tracking-tight text-text">Ralypto Bistro</span>
+                <span className="font-bold text-lg tracking-tight text-text">{restaurantName}</span>
               <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-semibold text-brand">
                 Table {tableNumber}
               </span>
@@ -214,7 +260,7 @@ export function QrMenuPage() {
           >
             All Items
           </button>
-          {MOCK_CATEGORIES.map((cat) => (
+        {categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
@@ -231,6 +277,8 @@ export function QrMenuPage() {
 
         {/* Menu Items List */}
         <div className="space-y-3">
+          {isLoading && <p className="py-10 text-center text-sm text-muted">Loading menu…</p>}
+          {!isLoading && !menuItems.length && <div className="py-10 text-center text-sm text-muted"><p>Menu is unavailable for this table.</p><button className="mt-2 underline" onClick={loadPublicMenu}>Retry</button></div>}
           {filteredItems.map((item) => {
             const inCart = cart.find((i) => i.item.id === item.id);
 
@@ -241,18 +289,13 @@ export function QrMenuPage() {
               >
                 {/* Photo with fallback */}
                 <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-brand-soft">
-                  {item.imageUrl ? (
-                    <img
-                      src={item.imageUrl}
-                      alt={item.name}
-                      loading="lazy"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs font-bold text-muted">
-                      Ralypto
-                    </div>
-                  )}
+                  <img
+                    src={menuItemImageUrl(item)}
+                    alt={item.name}
+                    loading="lazy"
+                    onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = fallbackMenuItemImageUrl(item); }}
+                    className="h-full w-full object-cover"
+                  />
                 </div>
 
                 {/* Details */}
@@ -390,11 +433,12 @@ export function QrMenuPage() {
                   </span>
                 </div>
                 <BigButton
-                  label="Confirm & Send to Kitchen"
+                  label={isSubmitting ? "Sending order…" : "Confirm & Send to Kitchen"}
                   variant="primary"
                   size="lg"
                   full
                   onClick={handleConfirmOrder}
+                  disabled={isSubmitting || !tableId || cart.length === 0}
                 />
               </div>
             </motion.div>

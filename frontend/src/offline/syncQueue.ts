@@ -78,7 +78,7 @@ export async function processSyncQueue(): Promise<{ synced: number; failed: numb
         await db.offlineOrders.update(localOrder.clientUuid, { syncStatus: 'syncing' });
 
         // Post order with idempotent clientUuid
-        await ordersApi.createOrder({
+        const serverOrder = await ordersApi.createOrder({
           tableId: localOrder.tableId,
           orderType: localOrder.orderType,
           clientCreatedUuid: localOrder.clientUuid,
@@ -92,11 +92,10 @@ export async function processSyncQueue(): Promise<{ synced: number; failed: numb
         // Settle payment if cash payment occurred while offline
         if (localOrder.payment && localOrder.payment.method === 'cash') {
           try {
-            await ordersApi.pay(localOrder.clientUuid, {
+            await ordersApi.pay(serverOrder.id, {
               amountCents: localOrder.payment.amountCents,
               paymentMethod: 'cash',
               tenderedCents: localOrder.payment.amountCents,
-              changeCents: 0,
             });
           } catch {
             // Payment settlement error; server has the order

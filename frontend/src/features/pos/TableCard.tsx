@@ -15,6 +15,7 @@ export type TableInfo = {
   totalCents?: number;
   minutesOpen?: number;
   area?: string;
+  activeOrderId?: string;
 };
 
 const statusView: Record<TableStatus, { tone: Tone; label: string; border: string }> = {

@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Search, X, Sparkles } from "lucide-react";
 import { formatMoney } from "@/lib/formatMoney";
 import type { MenuItem } from "@/api/types";
+import { fallbackMenuItemImageUrl, menuItemImageUrl } from "@/lib/menuImages";
 
 interface MenuGridProps {
   items: MenuItem[];
@@ -77,25 +78,20 @@ export function MenuGrid({
                 onClick={() => onSelectItem(item)}
                 className="group flex flex-col justify-between overflow-hidden rounded-card border border-border/70 bg-surface text-left shadow-card hover:border-brand/40 transition-colors"
               >
-                {item.imageUrl ? (
-                  <div className="relative h-28 w-full overflow-hidden bg-brand-soft">
-                    <img
-                      src={item.imageUrl}
-                      alt={item.name}
-                      loading="lazy"
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                    {item.modifiers && item.modifiers.length > 0 && (
-                      <span className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-brand/80 px-2 py-0.5 text-[11px] font-semibold text-surface backdrop-blur-md">
-                        <Sparkles className="h-3 w-3" /> Options
-                      </span>
-                    )}
-                  </div>
-                ) : (
-                  <div className="h-16 w-full bg-brand-soft/50 flex items-center justify-center text-xs font-medium text-muted">
-                    Ralypto Dish
-                  </div>
-                )}
+                <div className="relative h-28 w-full overflow-hidden bg-brand-soft">
+                  <img
+                    src={menuItemImageUrl(item)}
+                    alt={item.name}
+                    loading="lazy"
+                    onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = fallbackMenuItemImageUrl(item); }}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                  {item.modifiers && item.modifiers.length > 0 && (
+                    <span className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-brand/80 px-2 py-0.5 text-[11px] font-semibold text-surface backdrop-blur-md">
+                      <Sparkles className="h-3 w-3" /> Options
+                    </span>
+                  )}
+                </div>
 
                 <div className="p-3 flex flex-col justify-between flex-1">
                   <div>

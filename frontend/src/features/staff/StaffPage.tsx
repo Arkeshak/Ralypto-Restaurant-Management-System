@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Users,
   Plus,
@@ -17,65 +17,32 @@ import { useAuth } from '@/hooks/useAuth';
 import { useReadOnly } from '@/hooks/useReadOnly';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { apiClient } from '@/api/client';
 
 export interface StaffMember {
   id: string;
   name: string;
-  role: 'owner' | 'manager' | 'cashier' | 'waiter' | 'kitchen';
+  role: 'owner' | 'manager' | 'cashier' | 'waiter' | 'kitchen' | 'accountant';
   phone: string;
   pin: string;
   isActive: boolean;
   isOwner?: boolean;
 }
 
-const INITIAL_STAFF: StaffMember[] = [
-  {
-    id: 'staff-1',
-    name: 'Dilshan Perera',
-    role: 'owner',
-    phone: '077 123 4567',
-    pin: '1111',
-    isActive: true,
-    isOwner: true,
-  },
-  {
-    id: 'staff-2',
-    name: 'Kasun Fernando',
-    role: 'manager',
-    phone: '077 234 5678',
-    pin: '2222',
-    isActive: true,
-  },
-  {
-    id: 'staff-3',
-    name: 'Nimal Silva',
-    role: 'cashier',
-    phone: '077 345 6789',
-    pin: '3333',
-    isActive: true,
-  },
-  {
-    id: 'staff-4',
-    name: 'Samantha Wijesinghe',
-    role: 'waiter',
-    phone: '077 456 7890',
-    pin: '4444',
-    isActive: true,
-  },
-];
-
 export function StaffPage() {
   const { plan } = useAuth();
   const { isReadOnly, preventInReadOnly } = useReadOnly();
-  const [staffList, setStaffList] = useState<StaffMember[]>(INITIAL_STAFF);
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
 
   // Form states
   const [formName, setFormName] = useState('');
-  const [formRole, setFormRole] = useState<'manager' | 'cashier' | 'waiter' | 'kitchen'>('waiter');
+  const [formRole, setFormRole] = useState<'manager' | 'cashier' | 'waiter' | 'kitchen' | 'accountant'>('waiter');
   const [formPhone, setFormPhone] = useState('');
   const [formPin, setFormPin] = useState('');
+  const loadStaff = async () => setStaffList(await apiClient<StaffMember[]>('/staff'));
+  useEffect(() => { void loadStaff().catch(() => toast.error('Could not load staff directory')); }, []);
 
   // Plan limits: Basic has 3 users max
   const isBasic = plan?.code === 'basic';
@@ -108,11 +75,11 @@ export function StaffPage() {
     setFormName(staff.name);
     setFormRole(staff.role as any);
     setFormPhone(staff.phone);
-    setFormPin(staff.pin);
+    setFormPin('');
     setIsModalOpen(true);
   };
 
-  const handleSaveStaff = (e: React.FormEvent) => {
+  const handleSaveStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isReadOnly) {
       toast.error('Action blocked: Your account is in Read-Only mode. Please renew your plan.');
@@ -122,43 +89,20 @@ export function StaffPage() {
       toast.error('Please enter the employee name');
       return;
     }
-    if (formPin.length !== 4 || !/^\d{4}$/.test(formPin)) {
+    if ((!editingStaff || formPin) && (formPin.length !== 4 || !/^\d{4}$/.test(formPin))) {
       toast.error('Staff PIN must be exactly 4 digits');
       return;
     }
 
-    if (editingStaff) {
-      setStaffList((prev) =>
-        prev.map((s) =>
-          s.id === editingStaff.id
-            ? {
-                ...s,
-                name: formName.trim(),
-                role: s.isOwner ? 'owner' : formRole,
-                phone: formPhone.trim(),
-                pin: formPin,
-              }
-            : s
-        )
-      );
-      toast.success(`Updated details for ${formName}`);
-    } else {
-      const newStaff: StaffMember = {
-        id: `staff-${Date.now()}`,
-        name: formName.trim(),
-        role: formRole,
-        phone: formPhone.trim(),
-        pin: formPin,
-        isActive: true,
-      };
-      setStaffList((prev) => [...prev, newStaff]);
-      toast.success(`Added ${newStaff.name} to the team`);
-    }
-
-    setIsModalOpen(false);
+    try {
+      const payload = { name: formName.trim(), ...(!editingStaff?.isOwner ? { role: formRole } : {}), phone: formPhone.trim(), ...(formPin ? { pin: formPin } : {}) };
+      if (editingStaff) await apiClient(`/staff/${editingStaff.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+      else await apiClient('/staff', { method: 'POST', body: JSON.stringify(payload) });
+      await loadStaff(); setIsModalOpen(false); toast.success(editingStaff ? `Updated details for ${formName}` : `Added ${formName} to the team`);
+    } catch { toast.error('Could not save staff member'); }
   };
 
-  const handleToggleActive = (staff: StaffMember) => {
+  const handleToggleActive = async (staff: StaffMember) => {
     if (isReadOnly) {
       toast.error('Action blocked: Your account is in Read-Only mode. Please renew your plan.');
       return;
@@ -167,13 +111,11 @@ export function StaffPage() {
       toast.error('The primary account owner cannot be deactivated');
       return;
     }
-    setStaffList((prev) =>
-      prev.map((s) => (s.id === staff.id ? { ...s, isActive: !s.isActive } : s))
-    );
-    toast.info(`${staff.name} is now ${!staff.isActive ? 'Active' : 'Inactive'}`);
+    try { await apiClient(`/staff/${staff.id}`, { method: 'PATCH', body: JSON.stringify({ isActive: !staff.isActive }) }); await loadStaff(); toast.info(`${staff.name} is now ${!staff.isActive ? 'Active' : 'Inactive'}`); }
+    catch { toast.error('Could not update staff status'); }
   };
 
-  const handleDeleteStaff = (staff: StaffMember) => {
+  const handleDeleteStaff = async (staff: StaffMember) => {
     if (isReadOnly) {
       toast.error('Action blocked: Your account is in Read-Only mode. Please renew your plan.');
       return;
@@ -182,8 +124,8 @@ export function StaffPage() {
       toast.error('The account owner cannot be deleted');
       return;
     }
-    setStaffList((prev) => prev.filter((s) => s.id !== staff.id));
-    toast.success(`Removed ${staff.name} from staff directory`);
+    try { await apiClient(`/staff/${staff.id}`, { method: 'DELETE' }); await loadStaff(); toast.success(`Deactivated ${staff.name}`); }
+    catch { toast.error('Could not deactivate staff member'); }
   };
 
   const getRoleBadge = (role: string) => {
@@ -379,10 +321,12 @@ export function StaffPage() {
                   onChange={(e) => setFormRole(e.target.value as any)}
                   className="w-full h-10 px-3 rounded-xl border border-border bg-bg text-sm text-text focus:outline-none focus:ring-1 focus:ring-brand"
                 >
+                  {editingStaff?.isOwner && <option value="owner">Owner</option>}
                   <option value="waiter">Waiter (Floor App & Orders)</option>
                   <option value="cashier">Cashier (POS & Settlements)</option>
                   <option value="manager">Manager (Discounts, Voids, Shifts)</option>
                   <option value="kitchen">Kitchen Chef (KDS Station)</option>
+                  <option value="accountant">Accountant (Reports & Expenses)</option>
                 </select>
               </div>
 
@@ -399,7 +343,7 @@ export function StaffPage() {
 
               <div>
                 <label className="text-xs font-semibold text-muted block mb-1">
-                  4-Digit Terminal Access PIN
+                  {editingStaff ? 'New 4-Digit Terminal PIN (optional)' : '4-Digit Terminal Access PIN'}
                 </label>
                 <input
                   type="password"

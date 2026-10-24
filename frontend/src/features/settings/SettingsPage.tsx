@@ -24,6 +24,9 @@ import { changeLanguage } from '@/i18n';
 import { db } from '@/offline/db';
 import { processSyncQueue } from '@/offline/syncQueue';
 import { toast } from 'sonner';
+import { apiClient } from '@/api/client';
+import { tablesApi } from '@/api/endpoints/tables';
+import type { Table } from '@/api/types';
 
 type SettingsTab =
   | 'restaurant'
@@ -69,14 +72,7 @@ export function SettingsPage() {
   const [showLogoOnReceipt, setShowLogoOnReceipt] = useState(true);
 
   // 4. Tables & Areas
-  const [tablesList, setTablesList] = useState<TableSetting[]>([
-    { id: 't-1', number: 'T1', area: 'Indoor Dining', seats: 2 },
-    { id: 't-2', number: 'T2', area: 'Indoor Dining', seats: 4 },
-    { id: 't-3', number: 'T3', area: 'Indoor Dining', seats: 6 },
-    { id: 't-4', number: 'T4', area: 'Outdoor Patio', seats: 4 },
-    { id: 't-5', number: 'T5', area: 'Outdoor Patio', seats: 4 },
-    { id: 't-6', number: 'T6', area: 'Rooftop Bar', seats: 8 },
-  ]);
+  const [tablesList, setTablesList] = useState<TableSetting[]>([]);
   const [newTableNum, setNewTableNum] = useState('');
   const [newTableArea, setNewTableArea] = useState('Indoor Dining');
   const [newTableSeats, setNewTableSeats] = useState(4);
@@ -102,8 +98,27 @@ export function SettingsPage() {
     loadFailedSync();
   }, []);
 
-  const handleSaveAll = () => {
-    toast.success('Settings saved and synchronized successfully!');
+  const reloadTables = async () => {
+    const rows = await tablesApi.getTables();
+    setTablesList(rows.map((t: Table) => ({ id: t.id, number: t.number, area: t.areaName, seats: t.capacity })));
+  };
+  useEffect(() => {
+    void Promise.all([apiClient<any[]>('/showcase/settings'), reloadTables()]).then(([saved]) => {
+      const config = saved.find((item) => item.key === 'restaurant');
+      if (!config) return;
+      setRestName(config.restName ?? restaurant?.name ?? ''); setRestAddress(config.restAddress ?? ''); setRestPhone(config.restPhone ?? '');
+      setServiceEnabled(config.serviceEnabled ?? true); setServiceRate(config.serviceRate ?? 10);
+      setTaxEnabled(config.taxEnabled ?? true); setTaxRate(config.taxRate ?? 10);
+      setReceiptHeader(config.receiptHeader ?? ''); setReceiptFooter(config.receiptFooter ?? '');
+      setShowLogoOnReceipt(config.showLogoOnReceipt ?? true); setAllowSelfOrder(config.allowSelfOrder ?? true);
+    }).catch(() => toast.error('Could not load settings'));
+  }, []);
+
+  const handleSaveAll = async () => {
+    try {
+      await apiClient('/showcase/settings', { method: 'POST', body: JSON.stringify({ restName, restAddress, restPhone, serviceEnabled, serviceRate, taxEnabled, taxRate, receiptHeader, receiptFooter, showLogoOnReceipt, allowSelfOrder }) });
+      toast.success('Settings saved to the restaurant account');
+    } catch { toast.error('Could not save settings'); }
   };
 
   const handlePrintTestReceipt = () => {
@@ -116,23 +131,18 @@ export function SettingsPage() {
     toast.success('Dispatched A4 QR Codes print sheet');
   };
 
-  const handleAddTable = (e: React.FormEvent) => {
+  const handleAddTable = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTableNum.trim()) return;
-    const newEntry: TableSetting = {
-      id: `t-${Date.now()}`,
-      number: newTableNum.trim().toUpperCase(),
-      area: newTableArea,
-      seats: newTableSeats,
-    };
-    setTablesList((prev) => [...prev, newEntry]);
-    setNewTableNum('');
-    toast.success(`Added table ${newEntry.number}`);
+    try {
+      await tablesApi.createTable({ number: newTableNum.trim().toUpperCase(), areaName: newTableArea, capacity: newTableSeats });
+      await reloadTables(); setNewTableNum(''); toast.success(`Added table ${newTableNum.trim().toUpperCase()}`);
+    } catch { toast.error('Could not add table. Check for duplicate table number or active-session permission.'); }
   };
 
-  const handleDeleteTable = (id: string) => {
-    setTablesList((prev) => prev.filter((t) => t.id !== id));
-    toast.info('Table removed from layout');
+  const handleDeleteTable = async (id: string) => {
+    try { await apiClient(`/tables/${id}`, { method: 'DELETE' }); await reloadTables(); toast.info('Table removed from layout'); }
+    catch { toast.error('Cannot remove this table while it has an active order'); }
   };
 
   const handleRetrySync = async () => {

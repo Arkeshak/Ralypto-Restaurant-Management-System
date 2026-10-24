@@ -11,6 +11,8 @@ export const ordersApi = {
     tableId?: string;
     orderType: 'dine_in' | 'takeaway' | 'delivery' | 'qr_self_order';
     clientCreatedUuid?: string;
+      discountCents?: number;
+      serviceChargeEnabled?: boolean;
     items?: Array<{
       menuItemId: string;
       quantity: number;
@@ -45,13 +47,19 @@ export const ordersApi = {
   pay: (
     id: string,
     data: {
-      amountCents: number;
+      amountCents?: number;
       paymentMethod: string;
       tenderedCents?: number;
-      changeCents?: number;
+      allocations?: Array<{ paymentMethod: 'cash' | 'card' | 'qr_code' | 'online_transfer'; amountCents: number }>;
     }
   ) =>
-    apiClient<Payment>(`/orders/${id}/pay`, {
+    apiClient<{
+      order: Order;
+      payment: Payment;
+      payments: Payment[];
+      amountPaidCents: number;
+      outstandingCents: number;
+    }>(`/orders/${id}/pay`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),

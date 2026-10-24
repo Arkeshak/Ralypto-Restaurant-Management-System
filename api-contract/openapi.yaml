@@ -962,23 +962,26 @@ paths:
       summary: Place Customer Self-Order from Table QR
       tags: [Public QR]
       security: []
+      parameters:
+        - name: restaurantCode
+          in: query
+          required: true
+          schema:
+            type: string
+            example: CEY101
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [restaurantCode, tableNumber, items]
+              required: [tableId, orderType, items]
               properties:
-                restaurantCode:
+                tableId:
                   type: string
-                  example: CEY101
-                tableNumber:
+                orderType:
                   type: string
-                  example: '5'
-                customerName:
-                  type: string
-                  example: Kasun
+                  enum: [qr_self_order]
                 items:
                   type: array
                   items:
@@ -993,11 +996,25 @@ paths:
                         type: string
       responses:
         '201':
-          description: Self-order placed successfully
+          description: Self-order created and automatically sent to kitchen
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Order'
+                type: object
+                properties:
+                  order:
+                    $ref: '#/components/schemas/Order'
+                  tickets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        ticketNumber:
+                          type: string
+                        station:
+                          type: string
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -1009,20 +1026,25 @@ paths:
       summary: Customer Calls Waiter to Table
       tags: [Public QR]
       security: []
+      parameters:
+        - name: restaurantCode
+          in: query
+          required: true
+          schema:
+            type: string
+            example: CEY101
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [restaurantCode, tableNumber]
+              required: [tableId, tableNumber]
               properties:
-                restaurantCode:
+                tableId:
                   type: string
-                  example: CEY101
                 tableNumber:
                   type: string
-                  example: '5'
                 requestType:
                   type: string
                   enum: [service, bill, water, cutlery]
@@ -1045,6 +1067,48 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /public/request-bill:
+    post:
+      operationId: requestBillFromTable
+      summary: Request the active table bill from the public QR menu
+      tags: [Public QR]
+      security: []
+      parameters:
+        - name: restaurantCode
+          in: query
+          required: true
+          schema:
+            type: string
+            example: CEY101
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tableId, tableNumber]
+              properties:
+                tableId:
+                  type: string
+                tableNumber:
+                  type: string
+      responses:
+        '200':
+          description: Active order marked as billed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  order:
+                    $ref: '#/components/schemas/Order'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: No billable active order exists for the table
 
   # ============================================================================
   # SaaS Subscription Management
@@ -1203,6 +1267,86 @@ paths:
 # ==============================================================================
 # Components & Reusable Schemas
 # ==============================================================================
+  /staff:
+    get:
+      operationId: listStaff
+      summary: List restaurant staff (owner or manager)
+      responses:
+        '200':
+          description: Tenant's staff directory. PIN digests and credentials are never returned.
+    post:
+      operationId: createStaff
+      summary: Create a staff account with a four-digit terminal PIN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, role, pin]
+              properties:
+                name: { type: string }
+                role: { type: string, enum: [manager, cashier, waiter, kitchen, accountant] }
+                phone: { type: string }
+                pin: { type: string, pattern: '^[0-9]{4}$' }
+      responses:
+        '201': { description: Created staff account }
+  /staff/{staff_id}:
+    parameters:
+      - { name: staff_id, in: path, required: true, schema: { type: string } }
+    patch:
+      operationId: updateStaff
+      summary: Update staff contact, role, PIN, or active status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Updated staff member }
+    delete:
+      operationId: deactivateStaff
+      summary: Deactivate staff account
+      responses:
+        '204': { description: Account deactivated }
+  /showcase/{collection}:
+    parameters:
+      - { name: collection, in: path, required: true, schema: { type: string, enum: [settings, inventory, delivery, accounting] } }
+    get:
+      operationId: listShowcaseRecords
+      summary: List tenant-scoped operational records
+      responses:
+        '200': { description: Records for the selected collection }
+    post:
+      operationId: createShowcaseRecord
+      summary: Create a persisted operational record or upsert restaurant settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '201': { description: Persisted record }
+  /showcase/{collection}/{record_id}:
+    parameters:
+      - { name: collection, in: path, required: true, schema: { type: string, enum: [settings, inventory, delivery, accounting] } }
+      - { name: record_id, in: path, required: true, schema: { type: string } }
+    patch:
+      operationId: updateShowcaseRecord
+      summary: Update a persisted operational record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Updated record }
+    delete:
+      operationId: deleteShowcaseRecord
+      summary: Delete a persisted operational record
+      responses:
+        '204': { description: Record deleted }
+
 components:
   securitySchemes:
     BearerAuth:

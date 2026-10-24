@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   ChefHat,
@@ -31,62 +31,10 @@ interface KitchenTicket {
   elapsedMinutes: number;
 }
 
-const initialTickets: KitchenTicket[] = [
-  {
-    id: "t-101",
-    orderNumber: "ORD-881",
-    tableNumber: "T2",
-    orderType: "dine_in",
-    station: "kitchen",
-    status: "new",
-    elapsedMinutes: 4,
-    items: [
-      { id: "1", name: "Chicken Kottu", quantity: 2, notes: "Extra spicy" },
-      { id: "2", name: "Devilled Chicken", quantity: 1, notes: "No onions" },
-    ],
-  },
-  {
-    id: "t-102",
-    orderNumber: "ORD-879",
-    tableNumber: "T5",
-    orderType: "dine_in",
-    station: "kitchen",
-    status: "preparing",
-    elapsedMinutes: 14,
-    items: [
-      { id: "3", name: "Seafood Fried Rice", quantity: 1 },
-      { id: "4", name: "Hot Butter Cuttlefish", quantity: 1, notes: "Very crispy" },
-    ],
-  },
-  {
-    id: "t-103",
-    orderNumber: "ORD-872",
-    tableNumber: "T3",
-    orderType: "dine_in",
-    station: "bar",
-    status: "preparing",
-    elapsedMinutes: 22,
-    items: [
-      { id: "5", name: "Fresh Lime Soda", quantity: 2 },
-      { id: "6", name: "Mango Lassi", quantity: 1 },
-    ],
-  },
-  {
-    id: "t-104",
-    orderNumber: "ORD-870",
-    tableNumber: "Takeaway #14",
-    orderType: "takeaway",
-    station: "kitchen",
-    status: "ready",
-    elapsedMinutes: 18,
-    items: [
-      { id: "7", name: "Cheese Kottu", quantity: 1 },
-    ],
-  },
-];
-
 export function KitchenPage() {
-  const [tickets, setTickets] = useState<KitchenTicket[]>(initialTickets);
+  const [tickets, setTickets] = useState<KitchenTicket[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [station, setStation] = useState<"all" | "kitchen" | "bar">("all");
   const [soundEnabled, setSoundEnabled] = useState(true);
 
@@ -110,7 +58,34 @@ export function KitchenPage() {
     }
   };
 
-  // Timer simulation
+  const loadTickets = useCallback(async () => {
+    try {
+      const rows = await kitchenApi.getTickets();
+      setTickets(rows.map((ticket) => ({
+        id: ticket.id,
+        orderNumber: ticket.orderNumber,
+        tableNumber: ticket.tableNumber || "Takeaway",
+        orderType: ticket.tableNumber ? "dine_in" : "takeaway",
+        station: ticket.station,
+        status: ticket.status === "collected" ? "ready" : ticket.status,
+        elapsedMinutes: ticket.elapsedMinutes,
+        items: ticket.items.map((item, index) => ({ ...item, id: `${ticket.id}-${index}` })),
+      })));
+      setLoadError(null);
+    } catch (err: any) {
+      setLoadError(err?.message || "Could not load kitchen tickets");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTickets();
+    const poll = setInterval(loadTickets, 15000);
+    return () => clearInterval(poll);
+  }, [loadTickets]);
+
+  // Keep elapsed time current while the board is open.
   useEffect(() => {
     const interval = setInterval(() => {
       setTickets((prev) =>
@@ -146,13 +121,11 @@ export function KitchenPage() {
       );
     }
 
-    toast.success(message);
-    playAlertSound();
-
-    // 2. Perform API call
     try {
       const apiStatus = nextStatus === "done" ? "collected" : nextStatus;
       await kitchenApi.updateTicketStatus(ticket.id, apiStatus);
+      toast.success(message);
+      playAlertSound();
     } catch {
       // 3. Rollback on failure
       setTickets(previousTickets);
@@ -263,6 +236,9 @@ export function KitchenPage() {
 
       {/* 3 Columns: New / Preparing / Ready */}
       <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-5">
+        {isLoading && <div className="md:col-span-3 py-16 text-center text-sm text-[#98989d]">Loading live kitchen tickets…</div>}
+        {!isLoading && loadError && <div className="md:col-span-3 rounded-xl border border-rose-500/30 p-4 text-center text-sm text-rose-300">{loadError} <button className="ml-2 underline" onClick={loadTickets}>Retry</button></div>}
+        {!isLoading && !loadError && tickets.length === 0 && <div className="md:col-span-3 py-12 text-center text-sm text-[#98989d]">No active kitchen tickets. New orders sent to the kitchen will appear here.</div>}
         {columns.map((col) => {
           const colTickets = filteredTickets.filter((t) => t.status === col.status);
 

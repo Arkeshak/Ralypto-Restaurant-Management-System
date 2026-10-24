@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -23,6 +23,26 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ReportTable, type ReportColumn } from './ReportTable';
 import { REPORTS_REGISTRY, MOCK_REPORTS_DATA, type ReportMeta } from './reportsData';
+import { reportsApi } from '@/api/endpoints/reports';
+
+const EMPTY_REPORT_DATA = Object.fromEntries(
+  Object.keys(MOCK_REPORTS_DATA).map((key) => [key, []]),
+) as unknown as typeof MOCK_REPORTS_DATA;
+
+function reportDates(preset: string) {
+  const today = new Date();
+  const end = new Date(today);
+  const start = new Date(today);
+  if (preset === 'Yesterday') {
+    start.setDate(start.getDate() - 1);
+    end.setDate(end.getDate() - 1);
+  } else if (preset === 'Last 7 Days') {
+    start.setDate(start.getDate() - 6);
+  } else if (preset === 'This Month') {
+    start.setDate(1);
+  }
+  return { startDate: start.toISOString().slice(0, 10), endDate: end.toISOString().slice(0, 10) };
+}
 
 const PRESETS = ['Today', 'Yesterday', 'Last 7 Days', 'This Month'] as const;
 
@@ -34,6 +54,20 @@ export function ReportsPage() {
   const [selectedPreset, setSelectedPreset] = useState<string>('Today');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroup, setSelectedGroup] = useState<string>('all');
+  const [reportData, setReportData] = useState(EMPTY_REPORT_DATA);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setAnalyticsLoading(true);
+    setAnalyticsError(null);
+    reportsApi.getAnalytics(reportDates(selectedPreset))
+      .then((data) => { if (active) setReportData(data as typeof MOCK_REPORTS_DATA); })
+      .catch((error: any) => { if (active) setAnalyticsError(error?.message || 'Failed to load live reports.'); })
+      .finally(() => { if (active) setAnalyticsLoading(false); });
+    return () => { active = false; };
+  }, [selectedPreset]);
 
   const isBasic = plan?.code === 'basic';
 
@@ -68,7 +102,7 @@ export function ReportsPage() {
 
     switch (activeReport.id) {
       case 'daily_sales': {
-        const data = MOCK_REPORTS_DATA.daily_sales;
+        const data = reportData.daily_sales;
         const columns: ReportColumn<any>[] = [
           { header: 'Date', accessorKey: 'date' },
           { header: 'Orders', accessorKey: 'orders', align: 'center' },
@@ -113,7 +147,7 @@ export function ReportsPage() {
       }
 
       case 'sales_by_hour': {
-        const data = MOCK_REPORTS_DATA.sales_by_hour;
+        const data = reportData.sales_by_hour;
         const columns: ReportColumn<any>[] = [
           { header: 'Hour Range', accessorKey: 'hour' },
           { header: 'Orders Placed', accessorKey: 'orders', align: 'center' },
@@ -139,7 +173,7 @@ export function ReportsPage() {
       }
 
       case 'sales_by_item': {
-        const data = MOCK_REPORTS_DATA.sales_by_item;
+        const data = reportData.sales_by_item;
         const columns: ReportColumn<any>[] = [
           { header: 'Dish Name', accessorKey: 'name' },
           { header: 'Category', accessorKey: 'category' },
@@ -167,7 +201,7 @@ export function ReportsPage() {
       }
 
       case 'sales_by_category': {
-        const data = MOCK_REPORTS_DATA.sales_by_category;
+        const data = reportData.sales_by_category;
         const columns: ReportColumn<any>[] = [
           { header: 'Menu Category', accessorKey: 'category' },
           { header: 'Menu Items', accessorKey: 'itemsCount', align: 'center' },
@@ -189,7 +223,7 @@ export function ReportsPage() {
       }
 
       case 'sales_by_staff': {
-        const data = MOCK_REPORTS_DATA.sales_by_staff;
+        const data = reportData.sales_by_staff;
         const columns: ReportColumn<any>[] = [
           { header: 'Employee Name', accessorKey: 'staff' },
           { header: 'Role', accessorKey: 'role' },
@@ -216,7 +250,7 @@ export function ReportsPage() {
       }
 
       case 'sales_by_table': {
-        const data = MOCK_REPORTS_DATA.sales_by_table;
+        const data = reportData.sales_by_table;
         const columns: ReportColumn<any>[] = [
           { header: 'Table', accessorKey: 'table' },
           { header: 'Dining Area', accessorKey: 'area' },
@@ -244,7 +278,7 @@ export function ReportsPage() {
       }
 
       case 'payment_methods': {
-        const data = MOCK_REPORTS_DATA.payment_methods;
+        const data = reportData.payment_methods;
         const columns: ReportColumn<any>[] = [
           { header: 'Payment Tender', accessorKey: 'method' },
           { header: 'Transaction Count', accessorKey: 'count', align: 'center' },
@@ -265,7 +299,7 @@ export function ReportsPage() {
       }
 
       case 'tax_service_summary': {
-        const data = MOCK_REPORTS_DATA.tax_service_summary;
+        const data = reportData.tax_service_summary;
         const columns: ReportColumn<any>[] = [
           { header: 'Date', accessorKey: 'date' },
           {
@@ -306,7 +340,7 @@ export function ReportsPage() {
       }
 
       case 'discounts_given': {
-        const data = MOCK_REPORTS_DATA.discounts_given;
+        const data = reportData.discounts_given;
         const columns: ReportColumn<any>[] = [
           { header: 'Order Ref', accessorKey: 'orderId' },
           { header: 'Time', accessorKey: 'time' },
@@ -329,7 +363,7 @@ export function ReportsPage() {
       }
 
       case 'voids_refunds': {
-        const data = MOCK_REPORTS_DATA.voids_refunds;
+        const data = reportData.voids_refunds;
         const columns: ReportColumn<any>[] = [
           { header: 'Order Ref', accessorKey: 'orderId' },
           { header: 'Time', accessorKey: 'time' },
@@ -353,7 +387,7 @@ export function ReportsPage() {
       }
 
       case 'shift_summary': {
-        const data = MOCK_REPORTS_DATA.shift_summary;
+        const data = reportData.shift_summary;
         const columns: ReportColumn<any>[] = [
           { header: 'Shift ID', accessorKey: 'shiftId' },
           { header: 'Cashier', accessorKey: 'cashier' },
@@ -396,7 +430,7 @@ export function ReportsPage() {
       }
 
       case 'top_bottom_items': {
-        const data = MOCK_REPORTS_DATA.top_bottom_items;
+        const data = reportData.top_bottom_items;
         const columns: ReportColumn<any>[] = [
           { header: 'Rank / Tier', accessorKey: 'rank' },
           { header: 'Dish Name', accessorKey: 'name' },
@@ -416,7 +450,7 @@ export function ReportsPage() {
       default:
         return null;
     }
-  }, [activeReport]);
+  }, [activeReport, reportData]);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 pb-12">
@@ -586,7 +620,7 @@ export function ReportsPage() {
               <div className="h-56 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   {activeReport.id === 'sales_by_hour' ? (
-                    <BarChart data={MOCK_REPORTS_DATA.sales_by_hour}>
+                    <BarChart data={reportData.sales_by_hour}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
                       <XAxis dataKey="hour" fontSize={11} stroke="#888" tickLine={false} />
                       <YAxis
@@ -607,7 +641,7 @@ export function ReportsPage() {
                       <Bar dataKey="totalCents" fill="#18181b" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   ) : activeReport.id === 'daily_sales' ? (
-                    <LineChart data={MOCK_REPORTS_DATA.daily_sales}>
+                    <LineChart data={reportData.daily_sales}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
                       <XAxis dataKey="date" fontSize={10} stroke="#888" tickLine={false} />
                       <YAxis
@@ -634,7 +668,7 @@ export function ReportsPage() {
                       />
                     </LineChart>
                   ) : activeReport.id === 'sales_by_category' ? (
-                    <BarChart data={MOCK_REPORTS_DATA.sales_by_category}>
+                    <BarChart data={reportData.sales_by_category}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
                       <XAxis dataKey="category" fontSize={11} stroke="#888" tickLine={false} />
                       <YAxis
@@ -655,7 +689,7 @@ export function ReportsPage() {
                       <Bar dataKey="totalCents" fill="#18181b" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   ) : (
-                    <BarChart data={MOCK_REPORTS_DATA.payment_methods}>
+                    <BarChart data={reportData.payment_methods}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
                       <XAxis dataKey="method" fontSize={11} stroke="#888" tickLine={false} />
                       <YAxis
@@ -683,6 +717,11 @@ export function ReportsPage() {
 
           {/* Virtualized Report Table */}
           {reportViewConfig && (
+            analyticsLoading ? (
+              <div className="rounded-3xl border border-border bg-surface p-8 text-center text-sm text-muted">Loading live report data…</div>
+            ) : analyticsError ? (
+              <div className="rounded-3xl border border-border bg-surface p-8 text-center text-sm text-danger">{analyticsError}</div>
+            ) : (
             <ReportTable
               title={`${activeReport.title} (${selectedPreset})`}
               columns={reportViewConfig.columns}
@@ -690,6 +729,7 @@ export function ReportsPage() {
               totalsRow={reportViewConfig.totalsRow}
               exportFileName={`ralypto_${activeReport.id}_${selectedPreset.toLowerCase().replace(/\s+/g, '_')}`}
             />
+            )
           )}
         </div>
       )}

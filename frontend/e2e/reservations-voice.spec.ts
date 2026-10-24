@@ -11,11 +11,11 @@ test.describe('Reservations & Voice AI Flows E2E', () => {
   });
 
   test('(a) Owner navigates to Reservations, views Timeline, and opens New Reservation modal', async ({ page }) => {
-    // 1. PIN Login as owner (PIN: 1111)
+    // 1. PIN Login as owner (seeded PIN: 1234)
     await page.goto('/pin-login');
     await page.waitForLoadState('networkidle');
 
-    for (const char of '1111') {
+    for (const char of '1234') {
       await page.getByRole('button', { name: char, exact: true }).click();
     }
     await page.waitForURL(/\/dashboard|\/pos|\/tables/, { timeout: 10000 });
@@ -48,7 +48,7 @@ test.describe('Reservations & Voice AI Flows E2E', () => {
     // Login as owner to access waiter app
     await page.goto('/pin-login');
     await page.waitForLoadState('networkidle');
-    for (const char of '1111') {
+    for (const char of '1234') {
       await page.getByRole('button', { name: char, exact: true }).click();
     }
     await page.waitForURL(/\/dashboard|\/pos|\/tables/, { timeout: 10000 });
@@ -63,10 +63,10 @@ test.describe('Reservations & Voice AI Flows E2E', () => {
 
   test('(c) QR Menu displays "Just talk to Ralypto" voice bar', async ({ page }) => {
     // Public QR menu access (zero auth required)
-    await page.goto('/qr/CEY101/5');
+    await page.goto('/qr/CEY101/Table%201');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByText('Ralypto Bistro')).toBeVisible();
+    await expect(page.getByText('Ceylon Spice Bistro')).toBeVisible();
     await expect(page.getByText('Just talk to Ralypto')).toBeVisible();
   });
 
@@ -74,7 +74,7 @@ test.describe('Reservations & Voice AI Flows E2E', () => {
     // Login as owner
     await page.goto('/pin-login');
     await page.waitForLoadState('networkidle');
-    for (const char of '1111') {
+    for (const char of '1234') {
       await page.getByRole('button', { name: char, exact: true }).click();
     }
     await page.waitForURL(/\/dashboard|\/pos|\/tables/, { timeout: 10000 });
@@ -91,18 +91,18 @@ test.describe('Reservations & Voice AI Flows E2E', () => {
     // Click suggestion chip: "Best selling item this week?"
     await page.getByRole('button', { name: 'Best selling item this week?' }).click();
 
-    // Verify synthetic AI answer arrives
-    await expect(page.getByText('Chicken Kottu remains your #1 Star item')).toBeVisible({ timeout: 5000 });
+    // The answer is computed from this tenant's recorded completed orders.
+    await expect(page.getByText(/best seller in the available completed-order data|no completed order items/i)).toBeVisible({ timeout: 5000 });
 
     // Switch to Daily Morning Briefing
     await page.getByRole('button', { name: 'Daily Morning Briefing' }).click();
     await expect(page.getByText('WhatsApp Morning Briefing')).toBeVisible();
-    await expect(page.getByText('Good morning Arkesh!')).toBeVisible();
+    await expect(page.getByText('Current restaurant report summary:')).toBeVisible();
 
     // Switch to Demand Forecast
     await page.getByRole('button', { name: 'Demand Forecast & Prep List (Hero 5)' }).click();
-    await expect(page.getByText("Tomorrow's Machine Learning Forecast")).toBeVisible();
+    await expect(page.getByText('Recorded Demand Summary')).toBeVisible();
     await expect(page.getByText('Kitchen Morning Prep List')).toBeVisible();
-    await expect(page.getByText('Smart Stock Reorder Draft')).toBeVisible();
+    await expect(page.getByText('Low Stock Check')).toBeVisible();
   });
 });

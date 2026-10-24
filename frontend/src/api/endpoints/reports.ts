@@ -2,6 +2,9 @@ import { apiClient } from '../client';
 import type { Order } from '../types';
 
 export const reportsApi = {
+  getAnalytics: (params?: { startDate?: string; endDate?: string }) =>
+    apiClient<Record<string, Array<Record<string, any>>>>('/reports/analytics', { params }),
+
   getDashboard: () =>
     apiClient<{
       todaySalesCents: number;

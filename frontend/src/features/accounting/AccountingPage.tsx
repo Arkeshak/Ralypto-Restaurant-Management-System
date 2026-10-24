@@ -1,26 +1,23 @@
-import { Wallet, Plus, FileSpreadsheet } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Wallet, Plus, FileSpreadsheet, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
-import { BigButton } from "@/components/common/BigButton";
+import { apiClient } from "@/api/client";
 import { toast } from "sonner";
 
 export function AccountingPage() {
-  const todoList = [
-    { title: "Double-Entry General Ledger", desc: "Automated journal entries for POS sales, tax liabilities, and expenses." },
-    { title: "Profit & Loss (P&L) Statements", desc: "Monthly revenue vs COGS, staff payroll, and operational overheads." },
-    { title: "Petty Cash & Expense Vouchers", desc: "Staff cash out approvals with receipts upload and cashier reconciliation." },
-    { title: "Bank Reconciliation & Tax Filings", desc: "Exportable RAMIS / Inland Revenue Department Sri Lanka compatible reports." },
-  ];
+  type Expense = { id: string; description: string; category: string; amountCents: number; date: string; note?: string };
+  const [rows, setRows] = useState<Expense[]>([]); const [form,setForm] = useState({description:"",category:"Supplies",amountCents:0,date:new Date().toISOString().slice(0,10)});
+  const load=async()=>setRows(await apiClient<Expense[]>("/showcase/accounting"));
+  useEffect(()=>{void load().catch(()=>toast.error("Could not load expenses"));},[]);
+  const add=async(event:React.FormEvent)=>{event.preventDefault();try{await apiClient("/showcase/accounting",{method:"POST",body:JSON.stringify(form)});setForm({...form,description:"",amountCents:0});await load();toast.success("Expense recorded");}catch{toast.error("Could not save expense");}};
+  const total=rows.reduce((sum,row)=>sum+Number(row.amountCents||0),0);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <PageHeader
         title="Accounts & Ledger"
-        description="Double-entry accounting, profit & loss, and petty cash logs."
-        action={{
-          label: "Record Expense",
-          icon: Plus,
-          onClick: () => toast.info("Expense ledger scheduled for Phase 2."),
-        }}
+        description="Persist operating expenses and review recorded outflows."
+        action={{ label: "Record Expense", icon: Plus, onClick: () => document.getElementById("expense-description")?.focus() }}
       />
 
       <div className="rounded-card border border-border bg-surface p-8 shadow-card">
@@ -30,40 +27,14 @@ export function AccountingPage() {
           </div>
           <div>
             <h3 className="text-xl font-bold text-text">Accounting & Finance Module</h3>
-            <p className="text-sm text-muted">Exclusive to Premium tier accounts</p>
+            <p className="text-sm text-muted">Expense register · {rows.length} records</p>
           </div>
         </div>
 
-        <div className="mt-6 space-y-4">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted">
-            Planned Features (TODO)
-          </h4>
-          <div className="space-y-3">
-            {todoList.map((item, idx) => (
-              <div
-                key={item.title}
-                className="flex items-start gap-3 rounded-xl border border-border bg-bg/50 p-4"
-              >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface border border-border text-xs font-bold text-muted">
-                  {idx + 1}
-                </span>
-                <div>
-                  <h5 className="font-semibold text-sm text-text">{item.title}</h5>
-                  <p className="text-xs text-muted mt-0.5">{item.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-8 pt-6 border-t border-border/40 flex justify-end">
-          <BigButton
-            label="Export Trial Balance"
-            icon={FileSpreadsheet}
-            variant="secondary"
-            onClick={() => toast.info("Trial balance will be generated once ledger is active.")}
-          />
-        </div>
+        <div className="mt-5 grid sm:grid-cols-2 gap-3"><div className="rounded-xl border border-border p-4"><p className="text-xs text-muted">Recorded expenses</p><p className="text-xl font-bold">{rows.length}</p></div><div className="rounded-xl border border-border p-4"><p className="text-xs text-muted">Total outflow (cents)</p><p className="text-xl font-bold">{total.toLocaleString()}</p></div></div>
+        <form onSubmit={add} className="mt-5 grid md:grid-cols-4 gap-2"><input id="expense-description" required placeholder="Expense description" value={form.description} onChange={e=>setForm({...form,description:e.target.value})} className="rounded-xl border border-border bg-bg p-3 text-sm"/><select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} className="rounded-xl border border-border bg-bg p-3 text-sm">{["Supplies","Utilities","Rent","Payroll","Repairs","Other"].map(x=><option key={x}>{x}</option>)}</select><input type="number" min="1" required placeholder="Amount (cents)" value={form.amountCents||""} onChange={e=>setForm({...form,amountCents:Number(e.target.value)})} className="rounded-xl border border-border bg-bg p-3 text-sm"/><button className="rounded-xl bg-brand text-surface font-bold flex items-center justify-center gap-2"><Plus size={16}/> Record</button></form>
+        <div className="mt-5 divide-y divide-border border border-border rounded-xl">{!rows.length&&<p className="p-6 text-center text-muted">No expenses recorded.</p>}{rows.map(row=><div key={row.id} className="p-4 flex justify-between items-center gap-3"><div><p className="font-semibold">{row.description} · {row.category}</p><p className="text-xs text-muted">{row.date}</p></div><div className="flex items-center gap-3"><b>{Number(row.amountCents).toLocaleString()} cents</b><button aria-label="Delete expense" onClick={async()=>{await apiClient(`/showcase/accounting/${row.id}`,{method:"DELETE"});await load();}}><Trash2 size={16}/></button></div></div>)}</div>
+        <p className="mt-4 text-xs text-muted flex gap-2"><FileSpreadsheet size={14}/> This is an expense register, not a double-entry ledger, bank reconciliation, or tax filing system.</p>
       </div>
     </div>
   );

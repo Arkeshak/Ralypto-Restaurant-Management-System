@@ -9,25 +9,28 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { BigButton } from "@/components/common/BigButton";
 
 import { tablesApi } from "@/api/endpoints/tables";
+import { ordersApi } from "@/api/endpoints/orders";
+import type { Table } from "@/api/types";
 import { formatMoney } from "@/lib/formatMoney";
 import { useReadOnly } from "@/hooks/useReadOnly";
 
-const initialTables: TableInfo[] = [
-  { id: "1", number: 1, seats: 2, status: "free", area: "Inside" },
-  { id: "2", number: 2, seats: 4, status: "busy", totalCents: 245000, minutesOpen: 18, area: "Inside" },
-  { id: "3", number: 3, seats: 6, status: "bill_requested", totalCents: 612500, minutesOpen: 52, area: "Inside" },
-  { id: "4", number: 4, seats: 4, status: "free", area: "Inside" },
-  { id: "5", number: 5, seats: 4, status: "busy", totalCents: 128000, minutesOpen: 7, area: "Inside" },
-  { id: "6", number: 6, seats: 2, status: "free", area: "Outside" },
-  { id: "7", number: 7, seats: 4, status: "busy", totalCents: 389000, minutesOpen: 29, area: "Outside" },
-  { id: "8", number: 8, seats: 8, status: "free", area: "Outside" },
-  { id: "9", number: 9, seats: 4, status: "busy", totalCents: 540000, minutesOpen: 41, area: "Rooftop" },
-  { id: "10", number: 10, seats: 2, status: "free", area: "Rooftop" },
-  { id: "11", number: 11, seats: 4, status: "free", area: "Rooftop" },
-  { id: "12", number: 12, seats: 6, status: "bill_requested", totalCents: 780000, minutesOpen: 63, area: "Rooftop" },
-];
-
-const areas = ["All", "Inside", "Outside", "Rooftop"] as const;
+const toTableInfo = (table: Table, orders: Awaited<ReturnType<typeof ordersApi.getOrders>>): TableInfo => {
+  const activeOrder = orders.find((order) => order.id === table.activeOrderId);
+  const status: TableStatus = table.status === "billed" || activeOrder?.status === "billed"
+    ? "bill_requested"
+    : table.status === "available" || table.status === "cleaning" ? "free" : "busy";
+  const openedAt = activeOrder?.createdAt ? new Date(activeOrder.createdAt).getTime() : undefined;
+  return {
+    id: table.id,
+    number: Number(table.number.match(/\d+/)?.[0] || table.number),
+    seats: table.capacity,
+    status,
+    totalCents: activeOrder?.totalCents,
+    minutesOpen: openedAt ? Math.max(0, Math.floor((Date.now() - openedAt) / 60000)) : undefined,
+    area: table.areaName,
+    activeOrderId: activeOrder?.id ?? table.activeOrderId ?? undefined,
+  };
+};
 
 const statusFilters: { key: "all" | TableStatus; label: string }[] = [
   { key: "all", label: "All" },
@@ -39,8 +42,8 @@ const statusFilters: { key: "all" | TableStatus; label: string }[] = [
 export default function TablesPage() {
   const navigate = useNavigate();
   const { isReadOnly, preventInReadOnly } = useReadOnly();
-  const [tables, setTables] = useState<TableInfo[]>(initialTables);
-  const [loading, setLoading] = useState(false);
+  const [tables, setTables] = useState<TableInfo[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedArea, setSelectedArea] = useState<string>("All");
   const [selectedStatus, setSelectedStatus] = useState<"all" | TableStatus>("all");
@@ -53,7 +56,22 @@ export default function TablesPage() {
   const [mergeManagerPin, setMergeManagerPin] = useState<string>("");
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Simulated live update increments minute timers
+  const loadTables = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [tableRows, orders] = await Promise.all([tablesApi.getTables(), ordersApi.getOrders()]);
+      setTables(tableRows.map((table) => toTableInfo(table, orders)));
+    } catch (err: any) {
+      setError(err?.message || "Failed to load tables");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void loadTables(); }, []);
+
+  // Increment elapsed time labels while tables remain open.
   useEffect(() => {
     const timer = setInterval(() => {
       setTables((prev) =>
@@ -71,11 +89,18 @@ export default function TablesPage() {
     navigate(`/billing?table=${table.id}&number=${table.number}`);
   };
 
-  const handleRequestBill = (table: TableInfo) => {
-    setTables((prev) =>
-      prev.map((t) => (t.id === table.id ? { ...t, status: "bill_requested" } : t))
-    );
-    toast.success(`Bill requested for Table T${table.number}`);
+  const handleRequestBill = async (table: TableInfo) => {
+    if (!table.activeOrderId) {
+      toast.error(`Table T${table.number} has no active order to bill.`);
+      return;
+    }
+    try {
+      await ordersApi.requestBill(table.activeOrderId);
+      setTables((prev) => prev.map((t) => t.id === table.id ? { ...t, status: "bill_requested" } : t));
+      toast.success(`Bill requested for Table T${table.number}`);
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to request bill");
+    }
   };
 
   const handleMoveConfirm = async () => {
@@ -90,22 +115,7 @@ export default function TablesPage() {
     setActionLoading(true);
     try {
       await tablesApi.moveTable(selectedTable.id, targetTableId);
-      setTables((prev) =>
-        prev.map((t) => {
-          if (t.id === selectedTable.id) {
-            return { ...t, status: "free", totalCents: undefined, minutesOpen: undefined };
-          }
-          if (t.id === targetTableId) {
-            return {
-              ...t,
-              status: selectedTable.status,
-              totalCents: selectedTable.totalCents,
-              minutesOpen: selectedTable.minutesOpen,
-            };
-          }
-          return t;
-        })
-      );
+      await loadTables();
       toast.success(`Moved order from T${selectedTable.number} to T${target.number}`);
       setIsMoveOpen(false);
       setSelectedTable(null);
@@ -129,23 +139,8 @@ export default function TablesPage() {
     setActionLoading(true);
     try {
       await tablesApi.mergeTable(selectedTable.id, targetTableId, mergeManagerPin || undefined);
-      const mergedTotal = (selectedTable.totalCents ?? 0) + (target.totalCents ?? 0);
-      setTables((prev) =>
-        prev.map((t) => {
-          if (t.id === selectedTable.id) {
-            return { ...t, status: "free", totalCents: undefined, minutesOpen: undefined };
-          }
-          if (t.id === targetTableId) {
-            return {
-              ...t,
-              status: "busy",
-              totalCents: mergedTotal,
-              minutesOpen: Math.max(selectedTable.minutesOpen ?? 0, target.minutesOpen ?? 0),
-            };
-          }
-          return t;
-        })
-      );
+      await tablesApi.mergeTable(selectedTable.id, targetTableId, mergeManagerPin || undefined);
+      await loadTables();
       toast.success(`Merged T${selectedTable.number} into T${target.number}`);
       setIsMergeOpen(false);
       setSelectedTable(null);
@@ -164,6 +159,7 @@ export default function TablesPage() {
     const statusMatch = selectedStatus === "all" || t.status === selectedStatus;
     return areaMatch && statusMatch;
   });
+  const areas = ["All", ...new Set(tables.map((table) => table.area || "Main Hall"))];
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -222,10 +218,7 @@ export default function TablesPage() {
           </div>
 
           <button
-            onClick={() => {
-              setLoading(true);
-              setTimeout(() => setLoading(false), 400);
-            }}
+            onClick={() => void loadTables()}
             title="Refresh tables"
             className="p-2 rounded-full border border-border bg-surface text-muted hover:text-text hover:bg-bg transition-colors"
           >
@@ -251,8 +244,7 @@ export default function TablesPage() {
               label="Try again"
               variant="secondary"
               onClick={() => {
-                setError(null);
-                setLoading(false);
+                void loadTables();
               }}
             />
           </div>
