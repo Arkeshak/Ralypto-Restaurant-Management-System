@@ -7,6 +7,7 @@ test.describe('Phase 2 Core Flows E2E', () => {
       localStorage.clear();
       sessionStorage.clear();
       localStorage.setItem('ralypto_walkthrough_dismissed', 'true');
+      localStorage.setItem('ralypto_rest_code', 'CEY101');
     });
   });
 
@@ -14,12 +15,14 @@ test.describe('Phase 2 Core Flows E2E', () => {
     await page.goto('/pin-login');
     await expect(page.locator('h1')).toContainText('Staff Quick Access');
 
-    // Seeded cashier PIN is 2222.
+    // The seeded cashier PIN is 2222.
     const digit2 = page.getByRole('button', { name: '2', exact: true });
     for (let i = 0; i < 4; i++) await digit2.click();
 
     // Cashier landing route is /billing (the POS route)
     await page.waitForURL(/\/(billing|pos|tables)/);
+
+    await page.getByRole('button', { name: /Fresh Lime Juice/ }).click();
 
     // If shift is closed, open shift using the Open Shift action
     const openShiftBannerBtn = page.locator('button:has-text("Open Shift")').first();
@@ -36,7 +39,7 @@ test.describe('Phase 2 Core Flows E2E', () => {
       await page.waitForTimeout(600);
     }
 
-    // Click "Pay" to trigger PaymentModal (cart has items preloaded or added)
+    // Click "Pay" to trigger PaymentModal.
     const payBtn = page.locator('button:has-text("Pay")').last();
     await expect(payBtn).toBeVisible({ timeout: 5000 });
     await payBtn.click({ force: true });
@@ -98,7 +101,7 @@ test.describe('Phase 2 Core Flows E2E', () => {
 
   test('(d) waiter cannot open Reports', async ({ page }) => {
     await page.goto('/pin-login');
-    // Seeded waiter PIN is 3333.
+    // The seeded waiter PIN is 3333.
     const digit3 = page.getByRole('button', { name: '3', exact: true });
     for (let i = 0; i < 4; i++) await digit3.click();
 

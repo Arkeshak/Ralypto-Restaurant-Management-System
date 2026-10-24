@@ -10,7 +10,7 @@ from time import monotonic
 from typing import Any
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from jose import JWTError, jwt
 from pydantic import BaseModel, ConfigDict, Field
@@ -1736,7 +1736,8 @@ def list_showcase(collection: str, user: User = Depends(current_user), db: Sessi
     return [_showcase_record(row) for row in rows]
 
 @app.post(api + "/showcase/{collection}", status_code=201)
-def create_showcase(collection: str, body: dict[str, Any], user: User = Depends(current_user), db: Session = Depends(tenant_db)):
+def create_showcase(collection: str, body: dict[str, Any], user: User = Depends(current_user),
+                    db: Session = Depends(tenant_db), response: Response = None):
     _authorize_showcase(collection, user)
     if collection == "settings":
         restaurant = db.get(Restaurant, user.restaurant_id)
@@ -1748,6 +1749,8 @@ def create_showcase(collection: str, body: dict[str, Any], user: User = Depends(
             ShowcaseRecord.collection == collection, ShowcaseRecord.data["key"].as_string() == "restaurant"))
         if row:
             row.data = {**row.data, **body}; row.updated_at = datetime.now(timezone.utc); db.commit(); db.refresh(row)
+            if response is not None:
+                response.status_code = 200
             return _showcase_record(row)
         body = {"key": "restaurant", **body}
     row = ShowcaseRecord(restaurant_id=user.restaurant_id, collection=collection, data=body)

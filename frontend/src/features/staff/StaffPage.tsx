@@ -242,6 +242,7 @@ export function StaffPage() {
                   onClick={() => handleToggleActive(staff)}
                   disabled={staff.isOwner}
                   title={staff.isOwner ? "Owner cannot be deactivated" : "Toggle active status"}
+                  aria-label={`${staff.isActive ? 'Deactivate' : 'Activate'} ${staff.name}`}
                   className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors ${
                     staff.isActive
                       ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600'

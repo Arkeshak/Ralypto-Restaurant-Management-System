@@ -75,16 +75,39 @@ export const ordersHandlers = [
     const body = (await request.json()) as any;
     const order = orders.find((o) => o.id === id);
     if (order) {
-      order.status = 'completed';
+      const payments = body.allocations?.length
+        ? body.allocations
+            .filter((allocation: { amountCents: number }) => allocation.amountCents > 0)
+            .map((allocation: { amountCents: number; paymentMethod: string }) => ({
+              id: `pay-${Date.now()}-${allocation.paymentMethod}`,
+              orderId: order.id,
+              amountCents: allocation.amountCents,
+              paymentMethod: allocation.paymentMethod,
+              status: 'completed',
+              createdAt: new Date().toISOString(),
+            }))
+        : [{
+            id: `pay-${Date.now()}`,
+            orderId: order.id,
+            amountCents: body.amountCents || order.totalCents,
+            paymentMethod: body.paymentMethod || 'cash',
+            status: 'completed',
+            tenderedCents: body.tenderedCents,
+            changeCents: body.changeCents,
+            createdAt: new Date().toISOString(),
+          }];
+      const amountPaidCents = payments.reduce(
+        (total: number, payment: { amountCents: number }) => total + payment.amountCents,
+        0
+      );
+      const outstandingCents = Math.max(0, order.totalCents - amountPaidCents);
+      order.status = outstandingCents === 0 ? 'completed' : 'billed';
       return HttpResponse.json({
-        id: `pay-${Date.now()}`,
-        orderId: order.id,
-        amountCents: body.amountCents || order.totalCents,
-        paymentMethod: body.paymentMethod || 'cash',
-        status: 'completed',
-        tenderedCents: body.tenderedCents,
-        changeCents: body.changeCents,
-        createdAt: new Date().toISOString(),
+        order,
+        payment: payments[0],
+        payments,
+        amountPaidCents,
+        outstandingCents,
       });
     }
     return HttpResponse.json({ code: 'ORDER_NOT_FOUND', message: 'Order not found' }, { status: 404 });

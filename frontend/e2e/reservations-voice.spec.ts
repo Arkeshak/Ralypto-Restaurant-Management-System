@@ -7,6 +7,7 @@ test.describe('Reservations & Voice AI Flows E2E', () => {
       localStorage.clear();
       sessionStorage.clear();
       localStorage.setItem('ralypto_walkthrough_dismissed', 'true');
+      localStorage.setItem('ralypto_rest_code', 'CEY101');
     });
   });
 
