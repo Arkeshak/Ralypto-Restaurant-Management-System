@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Package, Plus, ClipboardList, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { apiClient } from "@/api/client";
@@ -10,8 +10,8 @@ export function InventoryPage() {
   const [name, setName] = useState(""); const [quantity, setQuantity] = useState(0);
   const [unit, setUnit] = useState("kg"); const [reorderLevel, setReorderLevel] = useState(1);
   const [busy, setBusy] = useState(false);
-  const load = async () => setItems(await apiClient<Stock[]>("/showcase/inventory"));
-  useEffect(() => { void load().catch(() => toast.error("Could not load inventory")); }, []);
+  const load = useCallback(async () => setItems(await apiClient<Stock[]>("/showcase/inventory")), []);
+  useEffect(() => { void load().catch(() => toast.error("Could not load inventory")); }, [load]);
   const add = async (event: React.FormEvent) => {
     event.preventDefault(); if (!name.trim()) return;
     setBusy(true);

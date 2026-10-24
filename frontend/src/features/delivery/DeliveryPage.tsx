@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Bike, Plus, Globe, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { apiClient } from "@/api/client";
@@ -7,8 +7,8 @@ import { toast } from "sonner";
 export function DeliveryPage() {
   type Delivery = { id: string; customer: string; phone: string; address: string; amount: number; status: string; provider: string };
   const [rows, setRows] = useState<Delivery[]>([]); const [form, setForm] = useState({ customer: "", phone: "", address: "", amount: 0, provider: "Direct" });
-  const load = async () => setRows(await apiClient<Delivery[]>("/showcase/delivery"));
-  useEffect(() => { void load().catch(() => toast.error("Could not load deliveries")); }, []);
+  const load = useCallback(async () => setRows(await apiClient<Delivery[]>("/showcase/delivery")), []);
+  useEffect(() => { void load().catch(() => toast.error("Could not load deliveries")); }, [load]);
   const add = async (event: React.FormEvent) => { event.preventDefault(); try { await apiClient("/showcase/delivery", { method: "POST", body: JSON.stringify({ ...form, status: "received" }) }); setForm({ customer: "", phone: "", address: "", amount: 0, provider: "Direct" }); await load(); toast.success("Delivery recorded"); } catch { toast.error("Could not save delivery"); } };
 
   return (

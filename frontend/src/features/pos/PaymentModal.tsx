@@ -6,6 +6,8 @@ import { BigButton } from "@/components/common/BigButton";
 import { splitEqual } from "./cartMath";
 import type { CartItem } from "./OrderCartPanel";
 
+const EMPTY_ITEMS: CartItem[] = [];
+
 interface PaymentModalProps {
   isOpen: boolean;
   totalCents: number;
@@ -28,7 +30,7 @@ interface PaymentModalProps {
 export function PaymentModal({
   isOpen,
   totalCents,
-  items = [],
+  items = EMPTY_ITEMS,
   onClose,
   onConfirmPayment,
 }: PaymentModalProps) {
@@ -56,7 +58,7 @@ export function PaymentModal({
     setMixedCashRupees(String(Math.floor(totalCents / 200)));
     setSelectedItemIds(items.map((item) => item.id));
     setCurrentPartPaidIndex(0);
-  }, [isOpen, totalCents]);
+  }, [isOpen, totalCents, items]);
 
   if (!isOpen) return null;
 

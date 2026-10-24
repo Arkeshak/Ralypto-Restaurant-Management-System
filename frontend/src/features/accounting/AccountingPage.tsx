@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Wallet, Plus, FileSpreadsheet, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { apiClient } from "@/api/client";
@@ -7,8 +7,8 @@ import { toast } from "sonner";
 export function AccountingPage() {
   type Expense = { id: string; description: string; category: string; amountCents: number; date: string; note?: string };
   const [rows, setRows] = useState<Expense[]>([]); const [form,setForm] = useState({description:"",category:"Supplies",amountCents:0,date:new Date().toISOString().slice(0,10)});
-  const load=async()=>setRows(await apiClient<Expense[]>("/showcase/accounting"));
-  useEffect(()=>{void load().catch(()=>toast.error("Could not load expenses"));},[]);
+  const load=useCallback(async()=>setRows(await apiClient<Expense[]>("/showcase/accounting")),[]);
+  useEffect(()=>{void load().catch(()=>toast.error("Could not load expenses"));},[load]);
   const add=async(event:React.FormEvent)=>{event.preventDefault();try{await apiClient("/showcase/accounting",{method:"POST",body:JSON.stringify(form)});setForm({...form,description:"",amountCents:0});await load();toast.success("Expense recorded");}catch{toast.error("Could not save expense");}};
   const total=rows.reduce((sum,row)=>sum+Number(row.amountCents||0),0);
 

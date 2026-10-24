@@ -137,7 +137,14 @@ export function PosPage() {
         taxPercent: restaurant.taxRate * 100,
       }
     );
-  }, [cartItems, discountPercent, discountCents, serviceChargeEnabled]);
+  }, [
+    cartItems,
+    discountPercent,
+    discountCents,
+    serviceChargeEnabled,
+    restaurant.serviceChargeRate,
+    restaurant.taxRate,
+  ]);
 
   const handleSelectItem = (item: MenuItem) => {
     if (item.modifiers && item.modifiers.length > 0) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Store,
   Receipt,
@@ -98,10 +98,10 @@ export function SettingsPage() {
     loadFailedSync();
   }, []);
 
-  const reloadTables = async () => {
+  const reloadTables = useCallback(async () => {
     const rows = await tablesApi.getTables();
     setTablesList(rows.map((t: Table) => ({ id: t.id, number: t.number, area: t.areaName, seats: t.capacity })));
-  };
+  }, []);
   useEffect(() => {
     void Promise.all([apiClient<any[]>('/showcase/settings'), reloadTables()]).then(([saved]) => {
       const config = saved.find((item) => item.key === 'restaurant');
@@ -112,7 +112,7 @@ export function SettingsPage() {
       setReceiptHeader(config.receiptHeader ?? ''); setReceiptFooter(config.receiptFooter ?? '');
       setShowLogoOnReceipt(config.showLogoOnReceipt ?? true); setAllowSelfOrder(config.allowSelfOrder ?? true);
     }).catch(() => toast.error('Could not load settings'));
-  }, []);
+  }, [reloadTables, restaurant?.name]);
 
   const handleSaveAll = async () => {
     try {
