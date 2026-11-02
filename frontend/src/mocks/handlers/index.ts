@@ -7,6 +7,7 @@ import { shiftsHandlers } from './shifts.handlers';
 import { subscriptionHandlers } from './subscription.handlers';
 import { reportsHandlers } from './reports.handlers';
 import { reservationsHandlers } from './reservations.handlers';
+import { showcaseHandlers } from './showcase.handlers';
 
 export const handlers = [
   ...authHandlers,
@@ -18,4 +19,5 @@ export const handlers = [
   ...subscriptionHandlers,
   ...reportsHandlers,
   ...reservationsHandlers,
+  ...showcaseHandlers,
 ];

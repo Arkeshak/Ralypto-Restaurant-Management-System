@@ -2,7 +2,12 @@ import type { StandardError } from './types';
 import { toast } from 'sonner';
 import i18n from '@/i18n';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api/v1';
+const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+// In mock demo mode, or if a placeholder URL was provided, always use relative '/api/v1' so MSW intercepts cleanly with zero CORS preflight issues
+const BASE_URL =
+  import.meta.env.VITE_USE_MOCKS !== 'false' || !rawBaseUrl || rawBaseUrl.includes('your-backend-api.com')
+    ? '/api/v1'
+    : rawBaseUrl;
 
 export class ApiError extends Error {
   code: string;

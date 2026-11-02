@@ -1,7 +1,12 @@
 import { http, HttpResponse } from 'msw';
 import { MOCK_ORDERS } from '../data/mockData';
+import { MOCK_REPORTS_DATA } from '../../features/reports/reportsData';
 
 export const reportsHandlers = [
+  http.get('*/reports/analytics', () => {
+    return HttpResponse.json(MOCK_REPORTS_DATA);
+  }),
+
   http.get('*/reports/dashboard', () => {
     return HttpResponse.json({
       todaySalesCents: 28450000,

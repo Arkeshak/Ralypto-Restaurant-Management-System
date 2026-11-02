@@ -55,7 +55,7 @@ class SocketClient {
         : null;
 
     // In mock mode without live backend, gracefully simulate connected mock socket
-    if (import.meta.env.VITE_USE_MOCKS === 'true') {
+    if (import.meta.env.VITE_USE_MOCKS !== 'false' || wsUrl.includes('your-backend-api.com')) {
       this.notifyStatus(true);
       return;
     }
