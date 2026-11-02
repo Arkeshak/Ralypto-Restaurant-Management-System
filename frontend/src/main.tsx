@@ -1,3 +1,9 @@
+// Auto-recover when a new deployment invalidates previously cached chunk hashes
+window.addEventListener('vite:preloadError', (event) => {
+  event.preventDefault();
+  window.location.reload();
+});
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
