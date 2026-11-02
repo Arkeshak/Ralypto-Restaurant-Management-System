@@ -51,7 +51,7 @@ export const SubscriptionBanner: React.FC = () => {
             <span>Your plan expired. 5 days left in grace period. Pay now to avoid interruption.</span>
           </div>
           <a
-            href="https://wa.me/94771234567?text=Hi%20Ralypto%20Team,%20I%20would%20like%20to%20renew%20my%20restaurant%20subscription."
+            href="https://wa.me/94755159435?text=Hi%20Ralypto%20Team,%20I%20would%20like%20to%20renew%20my%20restaurant%20subscription."
             target="_blank"
             rel="noreferrer"
             className="px-3 py-1 rounded-full bg-black text-white text-[11px] font-bold flex items-center gap-1.5 hover:opacity-90 transition-opacity"
@@ -72,7 +72,7 @@ export const SubscriptionBanner: React.FC = () => {
             </span>
           </div>
           <a
-            href="https://wa.me/94771234567?text=Hi%20Ralypto%20Team,%20I%20need%20to%20reactivate%20my%20account%20from%20read-only%20mode."
+            href="https://wa.me/94755159435?text=Hi%20Ralypto%20Team,%20I%20need%20to%20reactivate%20my%20account%20from%20read-only%20mode."
             target="_blank"
             rel="noreferrer"
             className="px-3 py-1 rounded-full bg-white text-rose-600 text-[11px] font-bold flex items-center gap-1.5 hover:opacity-90 transition-opacity"

@@ -39,7 +39,7 @@ export const subscriptionHandlers = [
       {
         id: 'inv-2026-10',
         invoiceNumber: 'INV-RAL-1042',
-        amountCents: 2450000,
+        amountCents: 1000000,
         status: 'paid',
         dueDate: '2026-10-01',
         paidAt: '2026-10-02T10:30:00Z',
@@ -47,7 +47,7 @@ export const subscriptionHandlers = [
       {
         id: 'inv-2026-09',
         invoiceNumber: 'INV-RAL-0941',
-        amountCents: 2450000,
+        amountCents: 1000000,
         status: 'paid',
         dueDate: '2026-09-01',
         paidAt: '2026-09-01T15:20:00Z',

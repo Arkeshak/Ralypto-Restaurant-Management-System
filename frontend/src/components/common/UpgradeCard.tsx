@@ -14,7 +14,7 @@ export function UpgradeCard({
 }: UpgradeCardProps) {
   const handleWhatsApp = () => {
     const text = encodeURIComponent(`Hi Ralypto team, I would like to upgrade my restaurant to the ${minPlanName} to access ${featureTitle}.`);
-    window.open(`https://wa.me/94770000000?text=${text}`, "_blank");
+    window.open(`https://wa.me/94755159435?text=${text}`, "_blank");
   };
 
   return (

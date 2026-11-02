@@ -7,7 +7,7 @@ export const FloatingHelpButton: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="fixed bottom-5 right-5 z-40">
+    <div className="fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] md:right-5 md:bottom-5 z-40">
       {/* Floating Trigger Button */}
       <motion.button
         whileTap={{ scale: 0.93 }}
@@ -44,7 +44,7 @@ export const FloatingHelpButton: React.FC = () => {
             <div className="space-y-2.5">
               {/* Option 1: WhatsApp Support */}
               <a
-                href="https://wa.me/94771234567?text=Hi%20Ralypto%20Support,%20I%20need%20help%20with%20my%20restaurant%20POS."
+                href="https://wa.me/94755159435?text=Hi%20Ralypto%20Support,%20I%20need%20help%20with%20my%20restaurant%20POS."
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-3 p-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 transition-colors"

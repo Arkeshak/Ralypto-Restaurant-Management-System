@@ -93,7 +93,7 @@ export const DEFAULT_DEMO_PLAN: Plan = {
   id: 'plan-premium',
   code: 'premium',
   name: 'Premium Plan',
-  monthlyPriceCents: 4800000,
+  monthlyPriceCents: 1500000,
 };
 
 const hasLocalStorage = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -139,7 +139,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       code: planCode,
       name: `${planCode.charAt(0).toUpperCase() + planCode.slice(1)} Plan`,
       monthlyPriceCents:
-        planCode === 'basic' ? 1250000 : planCode === 'standard' ? 2450000 : 4800000,
+        planCode === 'basic' ? 500000 : planCode === 'standard' ? 1000000 : 1500000,
     };
 
     if (hasLocalStorage) {

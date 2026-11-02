@@ -74,7 +74,7 @@ test.describe('Phase 2 Core Flows E2E', () => {
       localStorage.setItem('ralypto_token', 'mock-basic-token');
       localStorage.setItem('ralypto_user', JSON.stringify({ id: 'u1', name: 'Kasun Perera', role: 'owner' }));
       localStorage.setItem('ralypto_restaurant', JSON.stringify({ id: 'rest-1', name: 'Ceylon Flavors', plan: 'basic' }));
-      localStorage.setItem('ralypto_plan', JSON.stringify({ id: 'plan-basic', code: 'basic', name: 'Basic Plan', monthlyPriceCents: 1250000 }));
+      localStorage.setItem('ralypto_plan', JSON.stringify({ id: 'plan-basic', code: 'basic', name: 'Basic Plan', monthlyPriceCents: 500000 }));
       localStorage.setItem('ralypto_flags', JSON.stringify({
         pos_billing: true,
         kitchen_display: true,

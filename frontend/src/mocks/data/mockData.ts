@@ -88,19 +88,19 @@ export const MOCK_PLANS: Record<string, { id: string; code: 'basic' | 'standard'
     id: 'plan-basic',
     code: 'basic',
     name: 'Basic Plan',
-    monthlyPriceCents: 1250000,
+    monthlyPriceCents: 500000,
   },
   standard: {
     id: 'plan-standard',
     code: 'standard',
     name: 'Standard Plan',
-    monthlyPriceCents: 2450000,
+    monthlyPriceCents: 1000000,
   },
   premium: {
     id: 'plan-premium',
     code: 'premium',
     name: 'Premium Plan',
-    monthlyPriceCents: 4950000,
+    monthlyPriceCents: 1500000,
   },
 };
 

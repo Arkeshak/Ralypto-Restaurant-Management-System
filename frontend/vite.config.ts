@@ -1,15 +1,22 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
-// https://vitejs.dev/config/
+const env = loadEnv('production', process.cwd(), '');
+// The mock (MSW) demo uses its own service worker on scope "/". The PWA/Workbox
+// worker would fight it for the same scope and let API calls fall through to the
+// static host (HTML instead of JSON), so only enable the PWA with a real backend.
+const mockMode = (process.env.VITE_USE_MOCKS ?? env.VITE_USE_MOCKS) !== 'false';
+
 export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      selfDestroying: mockMode,
+      injectRegister: mockMode ? false : 'auto',
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: ['logo.svg'],
       manifest: {
         name: 'Ralypto Restaurant Management OS',
         short_name: 'Ralypto',

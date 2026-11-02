@@ -333,8 +333,8 @@ def seed_demo(db: Session) -> None:
     for number, capacity, status in [("Table 1", 2, "available"), ("Table 2", 4, "available"), ("Table 3", 4, "available"),
                                      ("Table 4", 6, "available"), ("Table 5", 4, "occupied")]:
         db.add(DiningTable(restaurant_id=restaurant.id, number=number, capacity=capacity, status=status))
-    db.add(Invoice(restaurant_id=restaurant.id, invoice_number="INV-2026-001", amount_cents=2450000,
-                   total_cents=2450000, status="paid", due_date="2026-10-01"))
+    db.add(Invoice(restaurant_id=restaurant.id, invoice_number="INV-2026-001", amount_cents=1000000,
+                   total_cents=1000000, status="paid", due_date="2026-10-01"))
     db.commit()
 
 
@@ -364,7 +364,7 @@ def serialize_user(user: User):
             "role": user.role, "restaurantId": user.restaurant_id}
 
 
-PLANS = {"basic": ("Basic Plan", 1250000), "standard": ("Standard Plan", 2450000), "premium": ("Premium Plan", 4800000)}
+PLANS = {"basic": ("Basic Plan", 500000), "standard": ("Standard Plan", 1000000), "premium": ("Premium Plan", 1500000)}
 FLAGS = ["pos_billing", "kitchen_display", "qr_menu_view", "qr_self_order", "waiter_app", "inventory_management",
          "delivery_integration", "advanced_reports", "accounting_ledger", "hr_payroll", "multi_branch", "ai_assistant",
          "ai_stock_prediction", "ai_menu_builder"]

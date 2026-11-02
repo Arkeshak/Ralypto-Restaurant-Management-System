@@ -130,5 +130,19 @@
     "exportCsv": "CSV බාගන්න",
     "printReport": "වාර්තාව මුද්‍රණය කරන්න",
     "aiAdvisorTitle": "AI ආගන්තුක සත්කාර උපදේශක"
+  },
+  "navShell": {
+    "reports": "වාර්තා",
+    "tables": "මේස",
+    "billing": "බිල්පත්",
+    "kitchen": "කුස්සිය",
+    "menu": "මෙනුව",
+    "stock": "තොග",
+    "delivery": "ඩිලිවරි",
+    "accounts": "ගිණුම්",
+    "staff": "කාර්ය මණ්ඩලය",
+    "askAi": "AI අසන්න",
+    "myPlan": "මගේ ප්ලෑන්",
+    "settings": "සැකසුම්"
   }
 }

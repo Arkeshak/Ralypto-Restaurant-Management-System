@@ -46,7 +46,7 @@ export function useAuth() {
       id: 'plan-standard',
       code: 'standard' as const,
       name: 'Standard Plan',
-      monthlyPriceCents: 2450000,
+      monthlyPriceCents: 1000000,
     },
   };
 }

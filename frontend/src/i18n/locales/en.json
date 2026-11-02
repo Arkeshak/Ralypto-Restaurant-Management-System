@@ -130,5 +130,19 @@
     "exportCsv": "Export CSV",
     "printReport": "Print Report",
     "aiAdvisorTitle": "AI Hospitality Advisor"
+  },
+  "navShell": {
+    "reports": "Reports",
+    "tables": "Tables",
+    "billing": "Billing",
+    "kitchen": "Kitchen",
+    "menu": "Menu",
+    "stock": "Stock",
+    "delivery": "Delivery",
+    "accounts": "Accounts",
+    "staff": "Staff",
+    "askAi": "Ask AI",
+    "myPlan": "My Plan",
+    "settings": "Settings"
   }
 }

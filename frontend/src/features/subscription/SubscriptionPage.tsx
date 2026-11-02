@@ -21,7 +21,7 @@ export function SubscriptionPage() {
     {
       code: "basic",
       name: "Basic Plan",
-      priceCents: 1250000,
+      priceCents: 500000,
       description: "Essential POS billing & kitchen display for small cafés",
       features: [
         "POS Billing & Cashier Shifts",
@@ -34,7 +34,7 @@ export function SubscriptionPage() {
     {
       code: "standard",
       name: "Standard Plan",
-      priceCents: 2450000,
+      priceCents: 1000000,
       description: "Floor operations, mobile waiter app & food cost control",
       features: [
         "All Basic Features",
@@ -50,7 +50,7 @@ export function SubscriptionPage() {
     {
       code: "premium",
       name: "Premium Plan",
-      priceCents: 4800000,
+      priceCents: 1500000,
       description: "Full enterprise hospitality suite with AI and Accounting",
       features: [
         "All Standard Features",
@@ -65,9 +65,9 @@ export function SubscriptionPage() {
   ];
 
   const invoices = [
-    { id: "INV-2026-10", date: "Oct 01, 2026", amountCents: 2450000, status: "Paid" },
-    { id: "INV-2026-09", date: "Sep 01, 2026", amountCents: 2450000, status: "Paid" },
-    { id: "INV-2026-08", date: "Aug 01, 2026", amountCents: 2450000, status: "Paid" },
+    { id: "INV-2026-10", date: "Oct 01, 2026", amountCents: 1000000, status: "Paid" },
+    { id: "INV-2026-09", date: "Sep 01, 2026", amountCents: 1000000, status: "Paid" },
+    { id: "INV-2026-08", date: "Aug 01, 2026", amountCents: 1000000, status: "Paid" },
   ];
 
   const handleSelectPlan = (code: PlanCode) => {
@@ -78,7 +78,7 @@ export function SubscriptionPage() {
 
   const handleWhatsApp = () => {
     const text = encodeURIComponent("Hi Ralypto sales, I would like to inquire about plan upgrade and payment options.");
-    window.open(`https://wa.me/94770000000?text=${text}`, "_blank");
+    window.open(`https://wa.me/94755159435?text=${text}`, "_blank");
   };
 
   return (
@@ -103,7 +103,7 @@ export function SubscriptionPage() {
             </span>
           </div>
           <p className="mt-1 text-sm text-muted">
-            Next renewal on <b>November 15, 2026</b> · {formatMoney(plan?.monthlyPriceCents || 2450000)} / month
+            Next renewal on <b>November 15, 2026</b> · {formatMoney(plan?.monthlyPriceCents || 1000000)} / month
           </p>
         </div>
 

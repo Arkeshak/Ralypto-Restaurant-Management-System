@@ -130,5 +130,19 @@
     "exportCsv": "CSV ஏற்றுமதி செய்",
     "printReport": "அறிக்கையை அச்சிடுக",
     "aiAdvisorTitle": "AI உணவக ஆலோசகர்"
+  },
+  "navShell": {
+    "reports": "அறிக்கைகள்",
+    "tables": "மேசைகள்",
+    "billing": "பில்லிங்",
+    "kitchen": "சமையலறை",
+    "menu": "மெனு",
+    "stock": "சரக்கு",
+    "delivery": "டெலிவரி",
+    "accounts": "கணக்குகள்",
+    "staff": "பணியாளர்கள்",
+    "askAi": "AI-யிடம் கேள்",
+    "myPlan": "எனது திட்டம்",
+    "settings": "அமைப்புகள்"
   }
 }

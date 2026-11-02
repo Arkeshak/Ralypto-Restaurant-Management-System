@@ -8,7 +8,7 @@ Ralypto operates on a multi-tenant Software-as-a-Service (SaaS) model with three
 
 | Capability / Module | Basic Plan | Standard Plan | Premium Plan |
 | :--- | :---: | :---: | :---: |
-| **Pricing (Monthly)** | LKR 12,500 / mo | LKR 24,500 / mo | LKR 48,000 / mo |
+| **Pricing (Monthly)** | LKR 5,000 / mo | LKR 10,000 / mo | LKR 15,000 / mo |
 | **Included User Seats** | Up to 3 users | Up to 10 users | Unlimited users |
 | **Branch Outlets** | 1 Branch | 1 Branch | Multi-branch (included) |
 | **POS Billing & Offline Mode** | Included | Included | Included |

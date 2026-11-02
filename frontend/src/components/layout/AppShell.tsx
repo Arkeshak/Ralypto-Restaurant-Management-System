@@ -23,7 +23,7 @@ export function AppShell() {
   const { user, restaurant, plan, logout } = useAuth();
   const hasFeature = useFeature();
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { activeManagerPinModal, closeManagerPinModal } = useUiStore();
 
   const [showLangMenu, setShowLangMenu] = useState(false);
@@ -53,7 +53,7 @@ export function AppShell() {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-          {items.map(({ to, label, icon: Icon, feature }) => {
+          {items.map(({ to, label, labelKey, icon: Icon, feature }) => {
             const locked = feature ? !hasFeature(feature) : false;
             return (
               <NavLink
@@ -76,7 +76,7 @@ export function AppShell() {
                       />
                     )}
                     <Icon className="relative h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden />
-                    <span className="relative flex-1 truncate">{label}</span>
+                    <span className="relative flex-1 truncate">{t(labelKey, label)}</span>
                     {locked && (
                       <Lock className="relative h-4 w-4 text-muted" aria-label="Not in your plan" />
                     )}

@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw';
+import { MOCK_TABLES, MOCK_CATEGORIES, MOCK_MENU_ITEMS } from '../data/mockData';
 
 // Mock in-memory store for showcase data
 let mockInventory = [
@@ -114,6 +115,21 @@ export const showcaseHandlers = [
     const data = (await request.json()) as any;
     mockSettings = { ...mockSettings, ...data };
     return HttpResponse.json(mockSettings);
+  }),
+
+  // Public QR menu (same shape as the real backend's /public/menu response)
+  http.get('*/public/menu/:restaurantCode/:tableNumber', ({ params }) => {
+    const code = String(params.restaurantCode).toUpperCase();
+    const requested = decodeURIComponent(String(params.tableNumber));
+    const table =
+      MOCK_TABLES.find((t) => t.number === requested || t.number === `Table ${requested}` || t.id === requested) ||
+      MOCK_TABLES[0];
+    return HttpResponse.json({
+      restaurant: { name: 'Ceylon Spice Bistro', code, currency: 'LKR' },
+      table,
+      categories: MOCK_CATEGORIES,
+      items: MOCK_MENU_ITEMS.filter((i) => i.isAvailable !== false),
+    });
   }),
 
   // Public QR actions
