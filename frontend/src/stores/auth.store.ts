@@ -71,9 +71,34 @@ export const PLAN_FEATURE_FLAGS_MAP: Record<PlanCode, FeatureFlags> = {
   },
 };
 
+export const DEFAULT_DEMO_USER: User = {
+  id: 'usr-owner-01',
+  email: 'owner@ralypto.com',
+  firstName: 'Arkesh',
+  lastName: 'Fernando',
+  role: 'owner',
+  restaurantId: 'rest-cey-101',
+};
+
+export const DEFAULT_DEMO_RESTAURANT: Restaurant = {
+  id: 'rest-cey-101',
+  name: 'Ceylon Spice Bistro',
+  code: 'CEY101',
+  currency: 'LKR',
+  taxRate: 0.0,
+  serviceChargeRate: 0.1,
+};
+
+export const DEFAULT_DEMO_PLAN: Plan = {
+  id: 'plan-premium',
+  code: 'premium',
+  name: 'Premium Plan',
+  monthlyPriceCents: 4800000,
+};
+
 const hasLocalStorage = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 
-const initialToken = hasLocalStorage ? localStorage.getItem('ralypto_token') : null;
+const initialToken = (hasLocalStorage && localStorage.getItem('ralypto_token')) || 'mock-jwt-token-usr-owner-01';
 const initialUserJson = hasLocalStorage ? localStorage.getItem('ralypto_user') : null;
 const initialPlanJson = hasLocalStorage ? localStorage.getItem('ralypto_plan') : null;
 const initialRestaurantJson = hasLocalStorage ? localStorage.getItem('ralypto_restaurant') : null;
@@ -81,11 +106,11 @@ const initialFlagsJson = hasLocalStorage ? localStorage.getItem('ralypto_flags')
 
 export const useAuthStore = create<AuthState>((set) => ({
   token: initialToken,
-  user: initialUserJson ? JSON.parse(initialUserJson) : null,
-  restaurant: initialRestaurantJson ? JSON.parse(initialRestaurantJson) : null,
-  plan: initialPlanJson ? JSON.parse(initialPlanJson) : null,
-  featureFlags: initialFlagsJson ? JSON.parse(initialFlagsJson) : null,
-  isAuthenticated: !!initialToken,
+  user: initialUserJson ? JSON.parse(initialUserJson) : DEFAULT_DEMO_USER,
+  restaurant: initialRestaurantJson ? JSON.parse(initialRestaurantJson) : DEFAULT_DEMO_RESTAURANT,
+  plan: initialPlanJson ? JSON.parse(initialPlanJson) : DEFAULT_DEMO_PLAN,
+  featureFlags: initialFlagsJson ? JSON.parse(initialFlagsJson) : PLAN_FEATURE_FLAGS_MAP.premium,
+  isAuthenticated: true,
   isLoading: false,
 
   setAuth: ({ token, user, restaurant, plan, featureFlags }) => {
@@ -137,13 +162,14 @@ export const useAuthStore = create<AuthState>((set) => ({
       localStorage.removeItem('ralypto_flags');
     }
 
+    // In demo mode, reset to default demo owner so visitor never gets trapped on login
     set({
-      token: null,
-      user: null,
-      restaurant: null,
-      plan: null,
-      featureFlags: null,
-      isAuthenticated: false,
+      token: 'mock-jwt-token-usr-owner-01',
+      user: DEFAULT_DEMO_USER,
+      restaurant: DEFAULT_DEMO_RESTAURANT,
+      plan: DEFAULT_DEMO_PLAN,
+      featureFlags: PLAN_FEATURE_FLAGS_MAP.premium,
+      isAuthenticated: true,
     });
   },
 }));

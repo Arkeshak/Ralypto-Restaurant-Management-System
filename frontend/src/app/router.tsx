@@ -7,8 +7,6 @@ import { RequirePlanFeature } from "./guards/RequirePlanFeature";
 import { PageLoading } from "../components/common/Skeleton";
 
 // Lazy-loaded routes for small initial bundle size
-const LoginPage = lazy(() => import("../features/auth/LoginPage"));
-const PinLoginPage = lazy(() => import("../features/auth/PinLoginPage"));
 const TablesPage = lazy(() => import("../features/pos/TablesPage"));
 const PosPage = lazy(() => import("../features/pos/PosPage"));
 const OrderHistoryPage = lazy(() => import("../features/orders/OrderHistoryPage"));
@@ -30,22 +28,14 @@ const AdminPage = lazy(() => import("../features/admin/AdminPage"));
 const OnboardingPage = lazy(() => import("../features/onboarding/OnboardingPage"));
 
 export const router = createBrowserRouter([
-  // Public Authentication Routes
+  // Public Authentication Routes (Bypassed for demo)
   {
     path: "/login",
-    element: (
-      <Suspense fallback={<PageLoading />}>
-        <LoginPage />
-      </Suspense>
-    ),
+    element: <Navigate to="/dashboard" replace />,
   },
   {
     path: "/pin-login",
-    element: (
-      <Suspense fallback={<PageLoading />}>
-        <PinLoginPage />
-      </Suspense>
-    ),
+    element: <Navigate to="/dashboard" replace />,
   },
 
   // Public QR Menu (Zero authentication required)
